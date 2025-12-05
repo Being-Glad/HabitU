@@ -1,0 +1,10 @@
+<resources>
+  <string name="app_name">HabitU</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
+  <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
+  <string name="widget_habitwidget_description" translatable="false">Calendar view of your habit</string>
+  <string name="widget_habitgridwidget_description" translatable="false">Heatmap view of your habit</string>
+  <string name="widget_habitweekwidget_description" translatable="false">Weekly view of your habit</string>
+  <string name="widget_habitstreakwidget_description" translatable="false">Track your current streak</string>
+  <string name="widget_habitlistwidget_description" translatable="false">View your habit list</string>
+</resources>
