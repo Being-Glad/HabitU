@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Modal, Linking, Platform, BackHandler, Alert, LayoutAnimation, UIManager } from 'react-native';
-
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Modal, Linking, Platform, BackHandler, Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { requestWidgetUpdate } from 'react-native-android-widget';
-
-if (Platform.OS === 'android') {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-  }
-}
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HabitProvider, useHabits } from './src/context/HabitContext';
-import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { AuthProvider } from './src/context/AuthContext';
 import HabitCard from './src/components/HabitCard';
 import CreateHabitScreen from './src/screens/CreateHabitScreen';
 import ArchivedHabitsScreen from './src/screens/ArchivedHabitsScreen';
@@ -39,14 +32,13 @@ import { HabitStreakWidget } from './src/widget/HabitStreakWidget';
 import { MonetizationService } from './src/services/MonetizationService';
 
 const MainScreen = () => {
-  const { user } = useAuth();
   const { habits, addHabit, archiveHabit, isHabitDue, settings, updateSettings, isInsightsUnlocked, unlockTheme } = useHabits();
-  const [activeTab, setActiveTab] = useState('home'); // 'home', 'resources', 'social', 'settings'
-  const [isViewSwitcherOpen, setViewSwitcherOpen] = useState(false);
   const [isCreateModalVisible, setCreateModalVisible] = useState(false);
   const [isArchiveVisible, setArchiveVisible] = useState(false);
+  const [isSettingsVisible, setSettingsVisible] = useState(false);
   const [isInsightsVisible, setInsightsVisible] = useState(false);
-  // Removed individual visibility states for main tabs
+  const [isResourcesVisible, setResourcesVisible] = useState(false);
+  const [isSocialVisible, setSocialVisible] = useState(false);
   const [selectedHabitId, setSelectedHabitId] = useState(null);
   const [actionHabit, setActionHabit] = useState(null);
   const [editHabit, setEditHabit] = useState(null);
@@ -84,32 +76,67 @@ const MainScreen = () => {
 
   useEffect(() => {
     const backAction = () => {
-      // Handle back button to go to Home tab if on another tab
-      if (activeTab !== 'home') {
-        setActiveTab('home');
+      if (widgetConfigId) {
+        setWidgetConfigId(null);
         return true;
       }
-
-      // Existing modal back handling
-      if (widgetConfigId) { setWidgetConfigId(null); return true; }
-      if (isInsightsVisible) { setInsightsVisible(false); return true; }
-      if (calendarHabit) { setCalendarHabit(null); return true; }
-      if (editHabit) { setEditHabit(null); return true; }
-      if (actionHabit) { setActionHabit(null); return true; }
-      if (isCreateModalVisible) { setCreateModalVisible(false); return true; }
-      if (isArchiveVisible) { setArchiveVisible(false); return true; }
-      if (selectedHabitId) { setSelectedHabitId(null); return true; }
-      if (shareHabit) { setShareHabit(null); return true; }
-
+      if (isInsightsVisible) {
+        setInsightsVisible(false);
+        return true;
+      }
+      if (isResourcesVisible) {
+        setResourcesVisible(false);
+        return true;
+      }
+      if (calendarHabit) {
+        setCalendarHabit(null);
+        return true;
+      }
+      if (editHabit) {
+        setEditHabit(null);
+        return true;
+      }
+      if (actionHabit) {
+        setActionHabit(null);
+        return true;
+      }
+      if (isCreateModalVisible) {
+        setCreateModalVisible(false);
+        return true;
+      }
+      if (isArchiveVisible) {
+        setArchiveVisible(false);
+        return true;
+      }
+      if (isSettingsVisible) {
+        setSettingsVisible(false);
+        return true;
+      }
+      if (isSocialVisible) {
+        setSocialVisible(false);
+        return true;
+      }
+      if (selectedHabitId) {
+        setSelectedHabitId(null);
+        return true;
+      }
+      if (shareHabit) {
+        setShareHabit(null);
+        return true;
+      }
       return false;
     };
 
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
     return () => backHandler.remove();
   }, [
-    activeTab, // Added activeTab dependency
-    widgetConfigId, isInsightsVisible, calendarHabit, editHabit, actionHabit,
-    isCreateModalVisible, isArchiveVisible, selectedHabitId, shareHabit
+    widgetConfigId, isInsightsVisible, isResourcesVisible, calendarHabit, editHabit, actionHabit,
+    isCreateModalVisible, isArchiveVisible, isSettingsVisible, isSocialVisible,
+    selectedHabitId, shareHabit
   ]);
 
   useEffect(() => {
@@ -168,14 +195,10 @@ const MainScreen = () => {
       const config = existingConfigStr ? JSON.parse(existingConfigStr) : {};
 
       const widgetName = widgetConfigName || 'HabitWidget';
-      const parsedId = parseInt(widgetConfigId, 10);
-      const strId = String(parsedId);
-
-      config[strId] = {
+      config[widgetConfigId] = {
         habitId: habit.id,
         widgetName: widgetName
       };
-
       await AsyncStorage.setItem('widget_config', JSON.stringify(config));
 
       const renderWidgetContent = () => {
@@ -208,7 +231,7 @@ const MainScreen = () => {
       requestWidgetUpdate({
         widgetName: widgetName,
         renderWidget: renderWidgetContent,
-        widgetId: parsedId,
+        widgetId: widgetConfigId,
       });
 
       setWidgetConfigId(null);
@@ -308,6 +331,25 @@ const MainScreen = () => {
     return <HabitDetailsScreen habitId={selectedHabitId} onClose={() => setSelectedHabitId(null)} />;
   }
 
+  if (isSocialVisible) {
+    return <SocialScreen onClose={() => setSocialVisible(false)} />;
+  }
+
+  if (isArchiveVisible) {
+    return <ArchivedHabitsScreen onClose={() => setArchiveVisible(false)} />;
+  }
+
+  if (isSettingsVisible) {
+    return (
+      <SettingsScreen
+        onClose={() => setSettingsVisible(false)}
+        onOpenArchive={() => {
+          setArchiveVisible(true);
+        }}
+      />
+    );
+  }
+
   const accentColor = settings.accentColor || '#2dd4bf';
   const themeId = settings.theme || 'dark';
 
@@ -322,13 +364,23 @@ const MainScreen = () => {
 
   const backgroundColor = getBackgroundColor();
 
-  const renderHomeContent = () => (
-    <View style={{ flex: 1, display: activeTab === 'home' ? 'flex' : 'none' }}>
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+      <StatusBar barStyle="light-content" hidden={true} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>HabitU</Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity onPress={() => setResourcesVisible(true)} style={styles.iconButton}>
+            <BookOpen color="#a1a1aa" size={20} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleInsightsPress} style={styles.iconButton}>
             <TrendingUp color="#a1a1aa" size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSupport} style={styles.iconButton}>
+            <Gift color="#a1a1aa" size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.iconButton}>
+            <Settings color="#a1a1aa" size={20} />
           </TouchableOpacity>
         </View>
       </View>
@@ -337,59 +389,25 @@ const MainScreen = () => {
         {/* View Switcher */}
         <View style={styles.filterContainer}>
           <Text style={styles.filterLabel}>Today's Habits</Text>
-          <View style={[styles.viewSwitcher, isViewSwitcherOpen && { paddingRight: 8 }]}>
-            {/* If Closed, show ONLY the active one (as a toggle) */}
-            {!isViewSwitcherOpen && (
-              <TouchableOpacity
-                style={[styles.viewButton, { backgroundColor: accentColor }]}
-                onPress={() => {
-                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                  setViewSwitcherOpen(true);
-                }}
-              >
-                {settings.viewMode === 'list' && <List color="#000" size={20} />}
-                {settings.viewMode === 'grid' && <Grid color="#000" size={20} />}
-                {settings.viewMode === 'streak' && <Flame color="#000" size={20} />}
-              </TouchableOpacity>
-            )}
-
-            {/* If Open, show ALL options */}
-            {isViewSwitcherOpen && (
-              <>
-                <TouchableOpacity
-                  style={[styles.viewButton, settings.viewMode === 'list' && { backgroundColor: accentColor }]}
-                  onPress={() => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    updateSettings({ viewMode: 'list' });
-                    setViewSwitcherOpen(false);
-                  }}
-                >
-                  <List color={settings.viewMode === 'list' ? '#000' : '#a1a1aa'} size={20} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.viewButton, settings.viewMode === 'grid' && { backgroundColor: accentColor }]}
-                  onPress={() => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    updateSettings({ viewMode: 'grid' });
-                    setViewSwitcherOpen(false);
-                  }}
-                >
-                  <Grid color={settings.viewMode === 'grid' ? '#000' : '#a1a1aa'} size={20} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.viewButton, settings.viewMode === 'streak' && { backgroundColor: accentColor }]}
-                  onPress={() => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    updateSettings({ viewMode: 'streak' });
-                    setViewSwitcherOpen(false);
-                  }}
-                >
-                  <Flame color={settings.viewMode === 'streak' ? '#000' : '#a1a1aa'} size={20} />
-                </TouchableOpacity>
-              </>
-            )}
+          <View style={styles.viewSwitcher}>
+            <TouchableOpacity
+              style={[styles.viewButton, settings.viewMode === 'list' && { backgroundColor: accentColor }]}
+              onPress={() => updateSettings({ viewMode: 'list' })}
+            >
+              <List color={settings.viewMode === 'list' ? '#000' : '#a1a1aa'} size={20} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewButton, settings.viewMode === 'grid' && { backgroundColor: accentColor }]}
+              onPress={() => updateSettings({ viewMode: 'grid' })}
+            >
+              <Grid color={settings.viewMode === 'grid' ? '#000' : '#a1a1aa'} size={20} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewButton, settings.viewMode === 'streak' && { backgroundColor: accentColor }]}
+              onPress={() => updateSettings({ viewMode: 'streak' })}
+            >
+              <Flame color={settings.viewMode === 'streak' ? '#000' : '#a1a1aa'} size={20} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -457,60 +475,20 @@ const MainScreen = () => {
         )}
         <View style={{ height: 100 }} />
       </ScrollView>
-    </View>
-  );
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar barStyle="light-content" hidden={true} />
-
-      {/* Tab Content Container */}
-      <View style={{ flex: 1 }}>
-        {renderHomeContent()}
-
-        <View style={{ flex: 1, display: activeTab === 'resources' ? 'flex' : 'none' }}>
-          <ResourcesScreen onClose={() => setActiveTab('home')} />
-        </View>
-
-        <View style={{ flex: 1, display: activeTab === 'social' ? 'flex' : 'none' }}>
-          <SocialScreen onClose={() => setActiveTab('home')} />
-        </View>
-
-        <View style={{ flex: 1, display: activeTab === 'settings' ? 'flex' : 'none' }}>
-          <SettingsScreen
-            onClose={() => setActiveTab('home')}
-            onOpenArchive={() => setArchiveVisible(true)}
-          />
-        </View>
-      </View>
 
       {/* Bottom Navigation */}
-      {/* Bottom Navigation - Hidden on Login Screen */}
-      {!(activeTab === 'social' && !user) && (
-        <View style={[styles.navbar, { width: '90%', left: '5%' }]}>
-          <TouchableOpacity onPress={() => setActiveTab('home')}>
-            <LayoutDashboard color={activeTab === 'home' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
+      <View style={styles.navbar}>
+        <LayoutDashboard color={accentColor} size={20} />
 
-          <TouchableOpacity onPress={() => setActiveTab('resources')}>
-            <BookOpen color={activeTab === 'resources' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={[styles.fab, { backgroundColor: accentColor, shadowColor: accentColor, borderColor: backgroundColor }]}>
+          <Plus color="#000" size={24} />
+        </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={[styles.fab, { backgroundColor: accentColor, shadowColor: accentColor, borderColor: backgroundColor }]}>
-            <Plus color="#000" size={24} />
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => setSocialVisible(true)}>
+          <Users color="#a1a1aa" size={20} />
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity onPress={() => setActiveTab('social')}>
-            <Users color={activeTab === 'social' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setActiveTab('settings')}>
-            <Settings color={activeTab === 'settings' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Modals */}
       <CreateHabitScreen
         visible={isCreateModalVisible}
         onClose={() => setCreateModalVisible(false)}
@@ -541,14 +519,13 @@ const MainScreen = () => {
         onClose={() => setInsightsVisible(false)}
       />
 
-      {/* Archive Screen as Modal now since it's sub-navigation */}
-      {isArchiveVisible && (
-        <Modal visible={true} onRequestClose={() => setArchiveVisible(false)} animationType="slide">
-          <ArchivedHabitsScreen onClose={() => setArchiveVisible(false)} />
-        </Modal>
-      )}
+      {
+        isResourcesVisible && (
+          <ResourcesScreen onClose={() => setResourcesVisible(false)} />
+        )
+      }
 
-      {/* Widget Configuration Modal (Existing code) */}
+      {/* Widget Configuration Modal */}
       <Modal
         visible={!!widgetConfigId}
         animationType="slide"

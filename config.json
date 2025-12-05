@@ -1,0 +1,23 @@
+{
+    "min_version": "1.0.0",
+    "resources": [
+        {
+            "id": "atomic_habits",
+            "title": "Atomic Habits",
+            "author": "James Clear",
+            "description": "The definitive guide to breaking bad habits and building good ones.",
+            "link": "https://jamesclear.com/atomic-habits",
+            "icon": "book",
+            "imageUrl": "https://m.media-amazon.com/images/I/81wgcld4wxL._SL1500_.jpg"
+        },
+        {
+            "id": "power_of_habit",
+            "title": "The Power of Habit",
+            "author": "Charles Duhigg",
+            "description": "Why we do what we do in life and business.",
+            "link": "https://charlesduhigg.com/the-power-of-habit/",
+            "icon": "book",
+            "imageUrl": "https://m.media-amazon.com/images/I/71i05dC02hL._SL1500_.jpg"
+        }
+    ]
+}

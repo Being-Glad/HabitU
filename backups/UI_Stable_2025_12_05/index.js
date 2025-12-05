@@ -1,11 +1,9 @@
 import { registerRootComponent } from 'expo';
+import App from './App';
 import { registerWidgetTask } from './src/widget/widgetTask';
 
-// Register the widget task - MUST be synchronized/first for Headless JS
+// Register the widget task
 registerWidgetTask();
-
-// Dynamically require App to ensure widget task registers BEFORE App dependencies (like Reanimated) load
-const App = require('./App').default;
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,
