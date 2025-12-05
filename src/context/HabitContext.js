@@ -293,6 +293,13 @@ export const HabitProvider = ({ children }) => {
         }
     }, [settings, loading]);
 
+    // Auto-save unlocked themes
+    useEffect(() => {
+        if (!loading) {
+            AsyncStorage.setItem('unlockedThemes', JSON.stringify(unlockedThemes));
+        }
+    }, [unlockedThemes, loading]);
+
     // Helper to save habits and update widgets
     const saveHabitsToStorage = async (newHabits) => {
         try {

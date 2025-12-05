@@ -295,16 +295,17 @@ const SocialScreen = ({ onClose }) => {
             <ScrollView contentContainerStyle={styles.content}>
                 {renderLeagueCard()}
 
-                <View style={[styles.toggleContainer, { backgroundColor: cardColor, borderColor }]}>
+                <View style={styles.toggleContainerWrapper}>
                     <AnimatedPressable
-                        style={[styles.toggleButton, !showLeaderboard && { backgroundColor: currentAccent }]}
+                        style={[styles.toggleButton, !showLeaderboard ? { backgroundColor: currentAccent } : { backgroundColor: cardColor, borderWidth: 1, borderColor: borderColor }]}
                         onPress={() => setShowLeaderboard(false)}
                     >
                         <Users color={!showLeaderboard ? '#fff' : subTextColor} size={16} />
                         <Text style={[styles.toggleText, { color: !showLeaderboard ? '#fff' : subTextColor }]}>Friends</Text>
                     </AnimatedPressable>
+
                     <AnimatedPressable
-                        style={[styles.toggleButton, showLeaderboard && { backgroundColor: currentAccent }]}
+                        style={[styles.toggleButton, showLeaderboard ? { backgroundColor: currentAccent } : { backgroundColor: cardColor, borderWidth: 1, borderColor: borderColor }]}
                         onPress={() => {
                             if (user.isGuest) {
                                 Alert.alert('Guest Mode', 'Sign in with Google to access the Global Leaderboard and compete with the world!');
@@ -486,19 +487,17 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '500',
     },
-    toggleContainer: {
+    toggleContainerWrapper: {
         flexDirection: 'row',
-        padding: 4,
-        borderRadius: 16,
+        gap: 12,
         marginBottom: 20,
-        borderWidth: 1,
     },
     toggleButton: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderRadius: 12,
         gap: 8,
     },

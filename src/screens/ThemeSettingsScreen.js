@@ -6,19 +6,19 @@ import { MonetizationService } from '../services/MonetizationService';
 import { Alert } from 'react-native';
 
 const ACCENT_COLORS = [
-    { name: 'Teal', value: '#2dd4bf' },
-    { name: 'Blue', value: '#3b82f6' },
-    { name: 'Purple', value: '#a855f7' },
-    { name: 'Rose', value: '#f43f5e' },
-    { name: 'Orange', value: '#f97316' },
-    { name: 'Green', value: '#22c55e' },
-    { name: 'Yellow', value: '#eab308' },
-    { name: 'Red', value: '#ef4444' },
-    { name: 'Pink', value: '#ec4899' },
-    { name: 'Indigo', value: '#6366f1' },
-    { name: 'Cyan', value: '#06b6d4' },
-    { name: 'Lime', value: '#84cc16' },
-    { name: 'Amber', value: '#f59e0b' },
+    { name: 'Teal', value: '#0d9488' }, // Darker Teal (700)
+    { name: 'Blue', value: '#2563eb' }, // Darker Blue (600)
+    { name: 'Purple', value: '#9333ea' }, // Darker Purple (600)
+    { name: 'Rose', value: '#e11d48' }, // Darker Rose (600)
+    { name: 'Orange', value: '#ea580c' }, // Darker Orange (600)
+    { name: 'Green', value: '#16a34a' }, // Darker Green (600)
+    { name: 'Yellow', value: '#ca8a04' }, // Darker Yellow/Gold (600)
+    { name: 'Red', value: '#dc2626' }, // Darker Red (600)
+    { name: 'Pink', value: '#db2777' }, // Darker Pink (600)
+    { name: 'Indigo', value: '#4f46e5' }, // Darker Indigo (600)
+    { name: 'Cyan', value: '#0891b2' }, // Darker Cyan (600)
+    { name: 'Lime', value: '#65a30d' }, // Darker Lime (600)
+    { name: 'Amber', value: '#d97706' }, // Darker Amber (600)
 ];
 
 const BACKGROUND_THEMES = [

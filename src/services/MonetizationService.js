@@ -45,8 +45,8 @@ export const MonetizationService = {
     unlockViaShare: async (themeId) => {
         try {
             const result = await Share.share({
-                message: `Check out HabitU! It's a beautiful, distraction-free habit tracker that helps me stay consistent. Download it here: https://github.com/Being-Glad/HabitU`,
-                url: 'https://github.com/Being-Glad/HabitU', // iOS adds this as a link
+                message: `Check out HabitU! It's a beautiful, distraction-free habit tracker that helps me stay consistent. Download it here: https://github.com/Being-Glad/HabitU/releases`,
+                url: 'https://github.com/Being-Glad/HabitU/releases', // iOS adds this as a link
                 title: 'HabitU - Build Better Habits'
             });
 
