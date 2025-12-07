@@ -98,11 +98,13 @@ android {
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
     signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+        release {
+            if (project.hasProperty('HABITU_UPLOAD_STORE_FILE')) {
+                storeFile file(HABITU_UPLOAD_STORE_FILE)
+                storePassword HABITU_UPLOAD_STORE_PASSWORD
+                keyAlias HABITU_UPLOAD_KEY_ALIAS
+                keyPassword HABITU_UPLOAD_KEY_PASSWORD
+            }
         }
     }
     buildTypes {
@@ -112,7 +114,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

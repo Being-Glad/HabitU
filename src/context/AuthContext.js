@@ -3,6 +3,7 @@ import { Buffer } from 'buffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import analytics from '@react-native-firebase/analytics';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 const AuthContext = createContext();
@@ -86,6 +87,11 @@ export const AuthProvider = ({ children }) => {
             };
             setUser(userData);
             await AsyncStorage.setItem('user', JSON.stringify(userData));
+
+            // Analytics: Logged In User
+            await analytics().setUserId(firebaseUser.uid);
+            await analytics().setUserProperties({ user_type: 'authenticated' });
+            await analytics().logLogin({ method: 'google' });
         } else {
             // User is signed out of Firebase
             // Check if we have a local Guest session before wiping
@@ -113,6 +119,13 @@ export const AuthProvider = ({ children }) => {
         };
         setUser(guestUser);
         await AsyncStorage.setItem('user', JSON.stringify(guestUser));
+
+        // Analytics: Guest User
+        await analytics().setUserId(null); // Clear ID for guest
+        await analytics().setUserProperties({ user_type: 'guest' });
+        await analytics().logLogin({ method: 'guest' });
+
+
     };
 
     useEffect(() => {
