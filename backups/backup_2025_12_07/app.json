@@ -1,0 +1,91 @@
+{
+  "expo": {
+    "name": "HabitU",
+    "slug": "habitu",
+    "scheme": "habitu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.being_glad.habitu",
+      "googleServicesFile": "./android/app/google-services.json",
+      "statusBar": {
+        "hidden": true
+      }
+    },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#2dd4bf"
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "HabitWidget",
+              "label": "Active Month",
+              "minWidth": "160dp",
+              "minHeight": "160dp",
+              "description": "Calendar view of your habit",
+              "previewImage": "./assets/widget-preview-month.png",
+              "resizeMode": "horizontal|vertical"
+            },
+            {
+              "name": "HabitGridWidget",
+              "label": "Grid View",
+              "minWidth": "260dp",
+              "minHeight": "80dp",
+              "description": "Heatmap view of your habit",
+              "previewImage": "./assets/widget-preview-grid.png",
+              "resizeMode": "horizontal|vertical"
+            },
+            {
+              "name": "HabitWeekWidget",
+              "label": "Active Week",
+              "minWidth": "160dp",
+              "minHeight": "80dp",
+              "description": "Weekly view of your habit",
+              "previewImage": "./assets/widget-preview-week.png",
+              "resizeMode": "horizontal|vertical"
+            },
+            {
+              "name": "HabitStreakWidget",
+              "label": "Streak Counter",
+              "minWidth": "140dp",
+              "minHeight": "140dp",
+              "description": "Track your current streak",
+              "previewImage": "./assets/widget-preview-streak.png",
+              "resizeMode": "horizontal|vertical"
+            },
+            {
+              "name": "HabitListWidget",
+              "label": "Habit List",
+              "minWidth": "260dp",
+              "minHeight": "200dp",
+              "description": "View your habit list",
+              "previewImage": "./assets/widget-preview-list.png",
+              "resizeMode": "horizontal|vertical"
+            }
+          ]
+        }
+      ]
+    ]
+  }
+}

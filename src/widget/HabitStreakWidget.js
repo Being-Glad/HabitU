@@ -1,7 +1,8 @@
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
-export function HabitStreakWidget({ name, streak, color, icon, habitId }) {
+export function HabitStreakWidget(props) {
+    const { name, streak, color, icon, habitId } = props;
     const iconMap = {
         'sparkles': '✨', 'star': '⭐', 'zap': '⚡', 'wand': '🪄', 'diamond': '💎', 'crown': '👑',
         'puzzle': '🧩', 'glasses': '👓', 'magnet': '🧲', 'watch': '⌚', 'hourglass': '⏳',
@@ -51,14 +52,26 @@ export function HabitStreakWidget({ name, streak, color, icon, habitId }) {
         character = "👑";
     }
 
+    // Layout Logic
+    const isCompact = (props.height && props.height < 120) || (props.width && props.width < 150);
+    const p = isCompact ? 8 : 16;
+    const borderRadius = isCompact ? 16 : 24;
+
+    const streakFontSize = isCompact ? 32 : 48;
+    const fireFontSize = isCompact ? 24 : 32;
+    const labelFontSize = isCompact ? 14 : 20;
+    const quoteFontSize = isCompact ? 10 : 12;
+    const iconContainerSize = isCompact ? 50 : 80;
+    const iconFontSize = isCompact ? 28 : 48;
+
     return (
         <FlexWidget
             style={{
                 height: 'match_parent',
                 width: 'match_parent',
                 backgroundColor: '#000000', // Pitch black background
-                borderRadius: 24,
-                padding: 16,
+                borderRadius: borderRadius,
+                padding: p,
                 flexDirection: 'row', // Row layout
                 alignItems: 'center',
                 justifyContent: 'space-between'
@@ -74,21 +87,21 @@ export function HabitStreakWidget({ name, streak, color, icon, habitId }) {
                     flex: 1
                 }}
             >
-                <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', marginBottom: isCompact ? 2 : 4 }}>
                     <TextWidget
                         text={`${streak}`}
                         style={{
-                            fontSize: 48,
+                            fontSize: streakFontSize,
                             fontWeight: 'bold',
                             color: '#ffffff',
-                            fontFamily: 'sans-serif-condensed' // Try to match the style
+                            fontFamily: 'sans-serif-condensed'
                         }}
                     />
                     <TextWidget
                         text="🔥"
                         style={{
-                            fontSize: 32,
-                            marginLeft: 8
+                            fontSize: fireFontSize,
+                            marginLeft: isCompact ? 4 : 8
                         }}
                     />
                 </FlexWidget>
@@ -96,33 +109,34 @@ export function HabitStreakWidget({ name, streak, color, icon, habitId }) {
                 <TextWidget
                     text="day streak"
                     style={{
-                        fontSize: 20,
+                        fontSize: labelFontSize,
                         color: '#ffffff',
                         fontWeight: 'bold',
-                        fontFamily: 'serif', // Attempt serif style
-                        marginBottom: 4
+                        fontFamily: 'serif',
+                        marginBottom: isCompact ? 2 : 4
                     }}
                 />
 
                 <TextWidget
                     text={quote}
                     style={{
-                        fontSize: 14,
+                        fontSize: quoteFontSize,
                         color: '#a1a1aa',
                         fontStyle: 'italic'
                     }}
+                    maxLines={1}
                 />
             </FlexWidget>
 
             {/* Right Side: Visual */}
             <FlexWidget
                 style={{
-                    width: 80,
-                    height: 80,
+                    width: iconContainerSize,
+                    height: iconContainerSize,
                     justifyContent: 'center',
                     alignItems: 'center',
                     backgroundColor: '#1a1a1a', // Darker container for the "cage" look
-                    borderRadius: 16,
+                    borderRadius: isCompact ? 12 : 16,
                     borderWidth: streak === 0 ? 2 : 0,
                     borderColor: '#333333'
                 }}
@@ -130,7 +144,7 @@ export function HabitStreakWidget({ name, streak, color, icon, habitId }) {
                 <TextWidget
                     text={character}
                     style={{
-                        fontSize: 48,
+                        fontSize: iconFontSize,
                     }}
                 />
                 {streak === 0 && (

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Users, Search, LogOut, ArrowLeft, Plus, Share2, Trash2, Copy, Lock, Globe } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useHabits } from '../context/HabitContext';
+import { useAlert } from '../context/AlertContext';
 import LoginScreen from './LoginScreen';
 import UsernameSetupScreen from './UsernameSetupScreen';
 import AnimatedPressable from '../components/AnimatedPressable';
@@ -33,6 +34,7 @@ const getNextLeague = (streak) => {
 const SocialScreen = ({ onClose }) => {
     const { user, logout, rivals, addRival, removeRival, generateShareCode, loading } = useAuth();
     const { getGlobalStats, exportData, settings } = useHabits(); // Get settings
+    const { showAlert } = useAlert();
     const [isAddRivalVisible, setAddRivalVisible] = useState(false);
     const [isShareVisible, setShareVisible] = useState(false);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -130,11 +132,11 @@ const SocialScreen = ({ onClose }) => {
 
         const result = await addRival(rivalCodeInput.trim());
         if (result.success) {
-            Alert.alert('Success', `Added ${result.rival.name} to your rivals!`);
+            showAlert('Success', `Added ${result.rival.name} to your rivals!`);
             setAddRivalVisible(false);
             setRivalCodeInput('');
         } else {
-            Alert.alert('Error', 'Invalid code. Please check and try again.');
+            showAlert('Error', 'Invalid code. Please check and try again.');
         }
     };
 
@@ -157,21 +159,16 @@ const SocialScreen = ({ onClose }) => {
 
     const copyToClipboard = () => {
         Clipboard.setString(generatedCode);
-        Alert.alert('Copied', 'Code copied to clipboard!');
+        showAlert('Copied', 'Code copied to clipboard!');
     };
 
     const handleLogout = () => {
         if (user?.isGuest) {
-            Alert.alert(
+            showAlert(
                 "Guest Account",
                 "You are using a Guest account. Your data will be lost if you logout without exporting. Do you want to export your data first?",
                 [
                     { text: "Cancel", style: "cancel" },
-                    {
-                        text: "Logout Anyway",
-                        style: "destructive",
-                        onPress: logout
-                    },
                     {
                         text: "Export & Logout",
                         onPress: async () => {
@@ -187,7 +184,7 @@ const SocialScreen = ({ onClose }) => {
                                     // Better UX: Let them share, then they can click logout again or we prompt "Did you save it?".
                                     // For simplicity, let's just share. If they want to logout, they can click "Logout Anyway" next time or we prompt.
 
-                                    Alert.alert(
+                                    showAlert(
                                         "Export Complete",
                                         "Did you save your data successfully?",
                                         [
@@ -196,10 +193,15 @@ const SocialScreen = ({ onClose }) => {
                                         ]
                                     );
                                 } catch (error) {
-                                    Alert.alert("Export Error", "Failed to share data.");
+                                    showAlert("Export Error", "Failed to share data.");
                                 }
                             }
                         }
+                    },
+                    {
+                        text: "Logout Anyway",
+                        style: "destructive",
+                        onPress: logout
                     }
                 ]
             );
@@ -265,11 +267,11 @@ const SocialScreen = ({ onClose }) => {
                                         </Text>
                                     </View>
                                     {item.isRival && (
-                                        <AnimatedPressable onPress={() => Alert.alert('Remove Rival', `Remove ${item.name}?`, [
+                                        <AnimatedPressable onPress={() => showAlert('Remove Rival', `Remove ${item.name}?`, [
                                             { text: 'Cancel', style: 'cancel' },
                                             { text: 'Remove', style: 'destructive', onPress: () => removeRival(item.id) }
                                         ])}>
-                                            <Trash2 color="#ef4444" size={20} />
+                                            <Trash2 color="#EF5350" size={20} />
                                         </AnimatedPressable>
                                     )}
                                 </View>
@@ -288,7 +290,7 @@ const SocialScreen = ({ onClose }) => {
                 <View style={{ width: 40 }} />
                 <Text style={[styles.headerTitle, { color: textColor }]}>Community</Text>
                 <AnimatedPressable onPress={handleLogout} style={[styles.iconButton, { backgroundColor: cardColor, padding: 8, borderRadius: 12 }]}>
-                    <LogOut color="#ef4444" size={24} />
+                    <LogOut color="#EF5350" size={24} />
                 </AnimatedPressable>
             </View>
 
@@ -308,7 +310,7 @@ const SocialScreen = ({ onClose }) => {
                         style={[styles.toggleButton, showLeaderboard ? { backgroundColor: currentAccent } : { backgroundColor: cardColor, borderWidth: 1, borderColor: borderColor }]}
                         onPress={() => {
                             if (user.isGuest) {
-                                Alert.alert('Guest Mode', 'Sign in with Google to access the Global Leaderboard and compete with the world!');
+                                showAlert('Guest Mode', 'Sign in with Google to access the Global Leaderboard and compete with the world!');
                                 return;
                             }
                             setShowLeaderboard(true);
@@ -439,6 +441,7 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 20,
+        paddingBottom: 120,
     },
     leagueCard: {
         padding: 24,

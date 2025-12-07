@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, ScrollView, Switch, Platform, Modal, Alert } from 'react-native';
-import { X, ChevronRight, Clock, Check, Calendar, Hash, Repeat } from 'lucide-react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, ScrollView, Switch, Platform, Modal } from 'react-native';
+import { X, ChevronRight, Clock, Check, Calendar, Hash, Repeat, HelpCircle } from 'lucide-react-native';
+import { useAlert } from '../context/AlertContext';
+import TimePickerModal from '../components/TimePickerModal';
 import IconPicker from '../components/IconPicker';
 import { useHabits } from '../context/HabitContext';
 import { getIcon } from '../utils/iconMap';
 
 const COLORS = [
-    '#f87171', '#fb923c', '#fbbf24', '#facc15', '#4ade80', '#2dd4bf',
-    '#34d399', '#22d3ee', '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa',
-    '#c084fc', '#e879f9', '#f472b6', '#fb7185'
+    '#EF5350', '#FF7043', '#FFA726', '#9CCC65', '#66BB6A', '#26A69A',
+    '#26C6DA', '#42A5F5', '#5C6BC0', '#AB47BC', '#EC407A', '#F06292',
+    '#8D6E63', '#78909C', '#BDBDBD'
 ];
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const EditHabitScreen = ({ habit, visible, onClose }) => {
     const { updateHabit, settings } = useHabits();
+    const { showAlert } = useAlert();
 
     const [name, setName] = useState('');
     const [color, setColor] = useState('#2dd4bf');
@@ -66,7 +68,7 @@ const EditHabitScreen = ({ habit, visible, onClose }) => {
 
     const handleSave = () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Please enter a habit name');
+            showAlert('Error', 'Please enter a habit name');
             return;
         }
 
@@ -195,7 +197,16 @@ const EditHabitScreen = ({ habit, visible, onClose }) => {
                     )}
 
                     {/* Goal Section */}
-                    <Text style={[styles.label, { color: textColor, marginTop: 24 }]}>Goal Type</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
+                        <Text style={[styles.label, { color: textColor, marginBottom: 0, marginRight: 8 }]}>Goal Type</Text>
+                        <TouchableOpacity onPress={() => showAlert(
+                            'Habit Types',
+                            'Select the tracking method that best fits your goal:\n\n• Yes/No: Best for daily tasks like "Exercise" or "Meditation".\n\n• Numeric: Best for quantifiable goals like "Drink 2000ml Water" or "Read 10 Pages".',
+                            [{ text: 'Understood' }]
+                        )}>
+                            <HelpCircle size={16} color={subTextColor} />
+                        </TouchableOpacity>
+                    </View>
                     <View style={[styles.segmentContainer, { backgroundColor: inputBg, borderColor }]}>
                         {['binary', 'numeric'].map((t) => (
                             <TouchableOpacity
@@ -247,10 +258,15 @@ const EditHabitScreen = ({ habit, visible, onClose }) => {
                         <View style={{ flex: 1, marginRight: 10 }}>
                             <Text style={[styles.label, { color: textColor }]}>Reminder</Text>
                             <TouchableOpacity style={[styles.selector, { backgroundColor: inputBg, borderColor }]} onPress={() => setShowTimePicker(true)}>
-                                <Text style={[styles.selectorText, { color: textColor }]}>
-                                    {reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </Text>
                                 <Clock color={subTextColor} size={20} />
+                                <Text style={[styles.selectorText, { color: textColor, flex: 1, marginLeft: 8 }]}>
+                                    {reminderTime ? reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Set Reminder'}
+                                </Text>
+                                {reminderTime && (
+                                    <TouchableOpacity onPress={() => setReminderTime(null)}>
+                                        <X color="#EF5350" size={20} />
+                                    </TouchableOpacity>
+                                )}
                             </TouchableOpacity>
                         </View>
                         <View style={{ flex: 1, marginLeft: 10 }}>
@@ -268,16 +284,15 @@ const EditHabitScreen = ({ habit, visible, onClose }) => {
                         </View>
                     </View>
 
-                    {showTimePicker && (
-                        <DateTimePicker
-                            value={reminderTime}
-                            mode="time"
-                            is24Hour={true}
-                            display="default"
-                            onChange={onTimeChange}
-                            themeVariant={isLight ? "light" : "dark"}
-                        />
-                    )}
+                    <TimePickerModal
+                        visible={showTimePicker}
+                        onClose={() => setShowTimePicker(false)}
+                        onSave={(date) => {
+                            setReminderTime(date);
+                            setShowTimePicker(false);
+                        }}
+                        initialTime={reminderTime}
+                    />
 
                     {/* Color Section */}
                     <Text style={[styles.label, { color: textColor, marginTop: 24 }]}>Color</Text>

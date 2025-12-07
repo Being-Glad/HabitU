@@ -1,16 +1,25 @@
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
-export function HabitWeekWidget({ name, streak, color, completedDates = {}, icon, habitId, weekStart = 'monday' }) {
+export function HabitWeekWidget(props) {
+    const { name, streak, color, completedDates = {}, icon, habitId, weekStart = 'monday', width, height } = props;
+
+    // Layout Logic
+    const isCompact = (height && height < 120) || (width && width < 200);
+    const p = isCompact ? 8 : 12;
+    const borderRadius = isCompact ? 16 : 24;
+    const fontSize = isCompact ? 12 : 14;
+    const iconSize = isCompact ? 12 : 16;
+    const checkSize = isCompact ? 20 : 24;
+
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const isTodayCompleted = completedDates[todayStr];
 
-    // Calculate start of the current week
+    // Calculate start of the current week correctly handling local time
     const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ...
     const startDayIndex = weekStart === 'monday' ? 1 : 0;
 
-    // Calculate how many days to go back to get to the start of the week
     let daysToSubtract = currentDay - startDayIndex;
     if (daysToSubtract < 0) daysToSubtract += 7;
 
@@ -21,7 +30,11 @@ export function HabitWeekWidget({ name, streak, color, completedDates = {}, icon
     const days = Array.from({ length: 7 }).map((_, i) => {
         const d = new Date(startOfWeek);
         d.setDate(startOfWeek.getDate() + i);
-        return d.toISOString().split('T')[0];
+        // Use local date string construction to match other widgets
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     });
 
     const iconMap = {
@@ -52,18 +65,21 @@ export function HabitWeekWidget({ name, streak, color, completedDates = {}, icon
 
     const displayIcon = iconMap[icon] || '⭐';
 
+    // Ensure color is valid
+    const activeColor = color || '#2dd4bf';
+
     return (
         <FlexWidget
             style={{
                 height: 'match_parent',
                 width: 'match_parent',
                 backgroundColor: '#1a1a1a',
-                borderRadius: 16,
-                paddingHorizontal: 10,
-                paddingTop: 10,
-                paddingBottom: 20, // Increased bottom padding to shift content up
+                borderRadius: borderRadius,
+                paddingHorizontal: p,
+                paddingTop: p,
+                paddingBottom: isCompact ? p : 20,
                 flexDirection: 'column',
-                justifyContent: 'center' // Center content vertically
+                justifyContent: 'center'
             }}
             clickAction="WIDGET_CLICK"
             clickActionData={{ habitId }}
@@ -73,43 +89,43 @@ export function HabitWeekWidget({ name, streak, color, completedDates = {}, icon
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginBottom: 12, // Increased margin for separation
+                    marginBottom: isCompact ? 6 : 12,
                     width: 'match_parent'
                 }}
             >
                 <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <TextWidget
                         text={displayIcon}
-                        style={{ fontSize: 16, marginRight: 6 }}
+                        style={{ fontSize: iconSize, marginRight: 6 }}
                     />
                     <TextWidget
                         text={name}
                         style={{
-                            fontSize: 14,
+                            fontSize: fontSize,
                             fontWeight: 'bold',
                             color: '#ffffff',
-                            maxLines: 1
                         }}
+                        maxLines={1}
                     />
                 </FlexWidget>
 
                 <FlexWidget
                     style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
+                        width: checkSize,
+                        height: checkSize,
+                        borderRadius: checkSize / 2,
                         borderWidth: 2,
-                        borderColor: color || '#2dd4bf',
+                        borderColor: activeColor,
                         justifyContent: 'center',
                         alignItems: 'center',
-                        backgroundColor: isTodayCompleted ? (color || '#2dd4bf') : 'transparent'
+                        backgroundColor: isTodayCompleted ? activeColor : 'transparent'
                     }}
                 >
                     {isTodayCompleted && (
                         <TextWidget
                             text="✓"
                             style={{
-                                fontSize: 14,
+                                fontSize: isCompact ? 12 : 14,
                                 color: '#000000',
                                 fontWeight: 'bold'
                             }}
@@ -128,7 +144,12 @@ export function HabitWeekWidget({ name, streak, color, completedDates = {}, icon
             >
                 {days.map((dateStr, index) => {
                     const isCompleted = completedDates[dateStr];
-                    const dayLabel = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'narrow' });
+                    const dayDate = new Date(dateStr);
+                    // Manually get day name to avoid locale issues on some Android versions in widgets
+                    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                    const dayLabel = dayNames[dayDate.getDay()];
+
+                    // Comparison logic must be robust
                     const isToday = dateStr === todayStr;
 
                     return (
@@ -152,9 +173,9 @@ export function HabitWeekWidget({ name, streak, color, completedDates = {}, icon
                             />
                             <FlexWidget
                                 style={{
-                                    width: 22,
-                                    height: 22,
-                                    backgroundColor: isCompleted ? color : '#333333',
+                                    width: isCompact ? 18 : 22,
+                                    height: isCompact ? 18 : 22,
+                                    backgroundColor: isCompleted ? activeColor : '#333333',
                                     borderRadius: 6,
                                     borderWidth: isToday ? 1 : 0,
                                     borderColor: '#ffffff'

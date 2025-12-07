@@ -181,14 +181,14 @@ export const AuthProvider = ({ children }) => {
             }
 
             // Update local user state. 
-            // Set username to null to force UsernameSetupScreen, but pass suggestedUsername for pre-fill.
+            // If we have a username, use it (skip setup). If not, set null to force setup.
             const userData = {
                 id: uid,
                 email: userCredential.user.email,
                 name: userCredential.user.displayName,
                 photoUrl: userCredential.user.photoURL,
-                username: null,
-                suggestedUsername: fetchedUsername,
+                username: fetchedUsername || null,
+                suggestedUsername: fetchedUsername, // Keep for reference if needed
                 isGuest: false
             };
             setUser(userData);

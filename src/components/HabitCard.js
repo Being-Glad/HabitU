@@ -1,19 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Share, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Share } from 'react-native';
 import { Check, Flame, Archive, Target } from 'lucide-react-native';
 import Heatmap from './Heatmap';
 import { useHabits } from '../context/HabitContext';
+import { useAlert } from '../context/AlertContext';
 import { format } from 'date-fns';
 import { getIcon } from '../utils/iconMap';
 import * as Haptics from 'expo-haptics';
-import AnimatedPressable from './AnimatedPressable';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import ScaleButton from './ScaleButton';
+import Animated, { ZoomIn, ZoomOut, useAnimatedStyle, useSharedValue, withSpring, withSequence } from 'react-native-reanimated';
 
 const HabitCard = ({ habit, onPress, onShare }) => {
     const { toggleHabit, archiveHabit, restoreHabit, settings, isHabitDue } = useHabits();
-    // ... (rest of logic unchanged until rendering)
+    // ... rest of context usage ...
+    const { showAlert } = useAlert();
     const today = new Date();
     const dateStr = format(today, 'yyyy-MM-dd');
+
+    const checkmarkScale = useSharedValue(1);
 
     const currentTheme = settings.theme || 'dark';
     const isLight = currentTheme === 'light';
@@ -28,50 +32,40 @@ const HabitCard = ({ habit, onPress, onShare }) => {
         ? (habit.completedDates?.[dateStr] || 0) >= habit.goal
         : (habit.completedDates?.[dateStr] || habit.logs?.[dateStr]);
 
+    const handleCheckPress = () => {
+        // Pop effect
+        checkmarkScale.value = withSequence(
+            withSpring(1.2, { damping: 10 }),
+            withSpring(1, { damping: 10 })
+        );
+        toggleHabit(habit.id, today);
+    };
+
     const handleLongPress = () => {
+        // ... existing handleLongPress logic ...
         if (habit.archived) {
-            Alert.alert(
-                "Manage Habit",
-                "What would you like to do?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Restore", onPress: () => restoreHabit(habit.id) }
-                ]
-            );
+            showAlert("Manage Habit", "What would you like to do?", [{ text: "Cancel", style: "cancel" }, { text: "Restore", onPress: () => restoreHabit(habit.id) }]);
         } else {
-            Alert.alert(
-                "Manage Habit",
-                "What would you like to do?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Share", onPress: () => onShare && onShare(habit) },
-                    { text: "Archive", onPress: () => archiveHabit(habit.id), style: 'destructive' }
-                ]
-            );
+            showAlert("Manage Habit", "What would you like to do?", [{ text: "Cancel", style: "cancel" }, { text: "Share", onPress: () => onShare && onShare(habit) }, { text: "Archive", onPress: () => archiveHabit(habit.id), style: 'destructive' }]);
         }
     };
 
     const getStreak = () => {
+        // ... existing getStreak logic ...
         let streak = 0;
         let d = new Date();
         const dates = habit.completedDates || habit.logs || {};
-
-        if (!dates[format(d, 'yyyy-MM-dd')]) {
-            d.setDate(d.getDate() - 1);
-        }
-
-        while (dates[format(d, 'yyyy-MM-dd')]) {
-            streak++;
-            d.setDate(d.getDate() - 1);
-        }
+        if (!dates[format(d, 'yyyy-MM-dd')]) { d.setDate(d.getDate() - 1); }
+        while (dates[format(d, 'yyyy-MM-dd')]) { streak++; d.setDate(d.getDate() - 1); }
         return streak;
     };
 
     return (
-        <AnimatedPressable
+        <ScaleButton
             onPress={onPress}
             onLongPress={handleLongPress}
             style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
+            activeOpacity={0.9} // Slight fade on card press
         >
             <View style={styles.header}>
                 <View style={styles.infoContainer}>
@@ -106,47 +100,33 @@ const HabitCard = ({ habit, onPress, onShare }) => {
                     </View>
                 </View>
 
-
-                {habit.type === 'numeric' ? (
-                    <AnimatedPressable
-                        onPress={() => {
-                            toggleHabit(habit.id, today);
-                        }}
-                        style={[
-                            styles.checkButton,
-                            {
-                                backgroundColor: isCompleted ? habit.color : 'transparent',
-                                borderColor: habit.color
-                            }
-                        ]}
-                    >
+                <ScaleButton
+                    onPress={handleCheckPress}
+                    style={[
+                        styles.checkButton,
+                        {
+                            backgroundColor: isCompleted ? habit.color : 'transparent',
+                            borderColor: isCompleted ? habit.color : subTextColor
+                        }
+                    ]}
+                    scaleTo={0.8} // Deeper press for checkmark
+                >
+                    {isCompleted ? (
                         <Animated.View
-                            key={isCompleted ? 'completed' : 'pending'}
-                            entering={ZoomIn.springify().damping(12)}
+                            entering={ZoomIn.springify()}
+                            exiting={ZoomOut}
+                            style={{ transform: [{ scale: checkmarkScale }] }}
                         >
-                            <Text style={{ color: isCompleted ? '#000' : habit.color, fontWeight: 'bold', fontSize: 18 }}>+</Text>
-                        </Animated.View>
-                    </AnimatedPressable>
-                ) : (
-                    <AnimatedPressable
-                        onPress={() => {
-                            toggleHabit(habit.id, today);
-                        }}
-                        style={[
-                            styles.checkButton,
-                            {
-                                backgroundColor: isCompleted ? habit.color : 'transparent',
-                                borderColor: isCompleted ? habit.color : subTextColor
-                            }
-                        ]}
-                    >
-                        {isCompleted && (
-                            <Animated.View entering={ZoomIn.springify().damping(12)}>
+                            {habit.type === 'numeric' ? (
+                                <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 18 }}>✓</Text>
+                            ) : (
                                 <Check color="#000" size={20} />
-                            </Animated.View>
-                        )}
-                    </AnimatedPressable>
-                )}
+                            )}
+                        </Animated.View>
+                    ) : (
+                        habit.type === 'numeric' && <Text style={{ color: habit.color, fontWeight: 'bold', fontSize: 18 }}>+</Text>
+                    )}
+                </ScaleButton>
             </View>
 
             {habit.type === 'numeric' && (
@@ -220,7 +200,7 @@ const HabitCard = ({ habit, onPress, onShare }) => {
                     Total: <Text style={{ color: textColor }}>{Object.keys(habit.completedDates || habit.logs || {}).length} Days</Text>
                 </Text>
             </View>
-        </AnimatedPressable>
+        </ScaleButton>
     );
 };
 

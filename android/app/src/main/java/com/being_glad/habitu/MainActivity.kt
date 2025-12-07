@@ -1,4 +1,4 @@
-package com.anonymous.nativeapp
+package com.being_glad.habitu
 
 import android.os.Build
 import android.os.Bundle

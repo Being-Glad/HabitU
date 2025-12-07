@@ -2,9 +2,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, StatusBar } from 'react-native';
 import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react-native';
 import { useHabits } from '../context/HabitContext';
+import { useAlert } from '../context/AlertContext';
 
 const ArchivedHabitsScreen = ({ onClose }) => {
     const { habits, restoreHabit, deleteHabit, settings } = useHabits();
+    const { showAlert } = useAlert();
     const archivedHabits = habits.filter(h => h.archived);
 
     const currentTheme = settings.theme || 'dark';
@@ -18,7 +20,7 @@ const ArchivedHabitsScreen = ({ onClose }) => {
     const iconBoxBg = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)';
 
     const handleRestore = (habit) => {
-        Alert.alert(
+        showAlert(
             "Restore Habit",
             `Are you sure you want to restore "${habit.name}"?`,
             [
@@ -29,7 +31,7 @@ const ArchivedHabitsScreen = ({ onClose }) => {
     };
 
     const handleDelete = (habit) => {
-        Alert.alert(
+        showAlert(
             "Delete Permanently",
             `This will permanently delete "${habit.name}" and all its history. This action cannot be undone.`,
             [

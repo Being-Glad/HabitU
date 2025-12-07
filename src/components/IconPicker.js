@@ -6,7 +6,7 @@ import { ICON_MAP } from '../utils/iconMap';
 const { width } = Dimensions.get('window');
 
 const ICON_CATEGORIES = {
-    miscellaneous: ['sparkles', 'star', 'zap', 'wand', 'diamond', 'crown', 'puzzle', 'glasses', 'magnet', 'watch', 'hourglass', 'scale', 'key', 'ribbon', 'party-popper', 'gift', 'box', 'package', 'activity', 'plus', 'heart'],
+    miscellaneous: ['sparkles', 'star', 'zap', 'wand', 'diamond', 'crown', 'puzzle', 'glasses', 'magnet', 'watch', 'hourglass', 'scale', 'key', 'ribbon', 'party-popper', 'gift', 'box', 'activity', 'plus', 'heart'],
     sports: ['dumbbell', 'bike', 'trophy', 'medal', 'target', 'swords', 'flag', 'flame', 'droplet', 'running', 'yoga', 'swim', 'soccer', 'basketball'],
     art: ['palette', 'music', 'camera', 'video', 'image', 'pen-tool', 'brush', 'scissors', 'headphones', 'mic', 'radio', 'film', 'book', 'read'],
     finances: ['dollar-sign', 'credit-card', 'wallet', 'piggy-bank', 'coins', 'briefcase', 'shopping-bag', 'tag', 'percent'],
@@ -17,7 +17,20 @@ const ICON_CATEGORIES = {
 
 const IconPicker = ({ visible, currentIcon, onSelect, onClose }) => {
     const renderIcon = (iconName) => {
-        return <Text style={{ fontSize: 24 }}>{ICON_MAP[iconName] || '❓'}</Text>;
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{
+                    fontSize: 28,
+                    textAlign: 'center',
+                    // Android specific adjustments
+                    includeFontPadding: false,
+                    textAlignVertical: 'center',
+                    marginBottom: 2 // Slight adjustment for baseline
+                }}>
+                    {ICON_MAP[iconName]}
+                </Text>
+            </View>
+        );
     };
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -106,8 +119,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#18181b',
-        margin: 20,
-        marginBottom: 0,
+        marginHorizontal: 20,
+        marginTop: 16,
+        marginBottom: 8,
         padding: 12,
         borderRadius: 12,
         gap: 10,
@@ -123,15 +137,21 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     content: {
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
     },
     categorySection: {
-        marginBottom: 24,
+        marginBottom: 8,
     },
     categoryTitle: {
         color: '#a1a1aa',
-        fontSize: 16,
-        marginBottom: 12,
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginBottom: 6,
+        marginLeft: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        fontStyle: 'normal',
         textTransform: 'capitalize',
         fontFamily: 'System', // Use system font
         fontStyle: 'italic', // Match the "handwritten" style in screenshot roughly
@@ -139,10 +159,10 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 8,
     },
     iconItem: {
-        width: (width - 40 - 36) / 4, // 4 columns with gap
+        width: (width - 40 - 24) / 4, // 4 columns with gap 8 (3 * 8 = 24)
         aspectRatio: 1,
         backgroundColor: '#18181b',
         borderRadius: 12,

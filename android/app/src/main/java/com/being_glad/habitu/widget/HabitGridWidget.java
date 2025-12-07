@@ -1,4 +1,4 @@
-package com.anonymous.nativeapp.widget;
+package com.being_glad.habitu.widget;
 
 import com.reactnativeandroidwidget.RNWidgetProvider;
 

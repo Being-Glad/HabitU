@@ -3,7 +3,7 @@ import { Text, StyleSheet, View } from 'react-native';
 import { getIcon } from '../utils/iconMap';
 import { useHabits } from '../context/HabitContext';
 import { format } from 'date-fns';
-import AnimatedPressable from './AnimatedPressable';
+import ScaleButton from './ScaleButton';
 
 const HabitGridItem = ({ habit, onPress }) => {
     const { toggleHabit, settings } = useHabits();
@@ -22,12 +22,12 @@ const HabitGridItem = ({ habit, onPress }) => {
     const subTextColor = isLight ? '#52525b' : '#a1a1aa';
 
     const handlePress = () => {
-        // Haptics handled by AnimatedPressable
+        // Haptics handled by ScaleButton
         toggleHabit(habit.id, today);
     };
 
     return (
-        <AnimatedPressable
+        <ScaleButton
             onPress={handlePress}
             style={[
                 styles.card,
@@ -41,6 +41,7 @@ const HabitGridItem = ({ habit, onPress }) => {
                     elevation: 2,
                 }
             ]}
+            activeOpacity={0.9}
         >
             <Text style={{ fontSize: 32, marginBottom: 8 }}>
                 {getIcon(habit.icon)}
@@ -51,7 +52,7 @@ const HabitGridItem = ({ habit, onPress }) => {
             <Text style={[styles.status, { color: isCompleted ? 'rgba(0,0,0,0.7)' : subTextColor }]}>
                 {isCompleted ? 'Done!' : 'Tap to complete'}
             </Text>
-        </AnimatedPressable>
+        </ScaleButton>
     );
 };
 

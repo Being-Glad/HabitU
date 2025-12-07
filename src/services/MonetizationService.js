@@ -51,13 +51,15 @@ export const MonetizationService = {
             });
 
             if (result.action === Share.sharedAction) {
-                if (result.activityType) {
-                    // shared with activity type of result.activityType
-                    return true;
-                } else {
-                    // shared
-                    return true;
+                // Determine success based on platform quirks
+                const isSuccess = result.activityType || true; // Most shares return true
+
+                // ARTIFICIAL DELAY: Simulate "Verifying Share..."
+                if (isSuccess) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
+
+                return isSuccess;
             } else if (result.action === Share.dismissedAction) {
                 // dismissed
                 return false;

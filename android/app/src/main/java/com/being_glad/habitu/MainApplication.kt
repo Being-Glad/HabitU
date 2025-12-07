@@ -1,4 +1,4 @@
-package com.anonymous.nativeapp
+package com.being_glad.habitu
 
 import android.app.Application
 import android.content.res.Configuration

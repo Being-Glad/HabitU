@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Modal, Linking, Platform, BackHandler, Alert, LayoutAnimation, UIManager } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Modal, Linking, Platform, BackHandler, Alert, LayoutAnimation, UIManager, FlatList } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { requestWidgetUpdate } from 'react-native-android-widget';
@@ -12,6 +12,8 @@ if (Platform.OS === 'android') {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HabitProvider, useHabits } from './src/context/HabitContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { AlertProvider, useAlert } from './src/context/AlertContext';
+import CustomAlert from './src/components/CustomAlert';
 import HabitCard from './src/components/HabitCard';
 import CreateHabitScreen from './src/screens/CreateHabitScreen';
 import ArchivedHabitsScreen from './src/screens/ArchivedHabitsScreen';
@@ -37,10 +39,17 @@ import { HabitGridWidget } from './src/widget/HabitGridWidget';
 import { HabitWeekWidget } from './src/widget/HabitWeekWidget';
 import { HabitStreakWidget } from './src/widget/HabitStreakWidget';
 import { MonetizationService } from './src/services/MonetizationService';
+import StorageService from './src/services/StorageService';
+import WidgetService from './src/services/WidgetService';
+import CelebrationModal from './src/components/CelebrationModal';
+import ScaleButton from './src/components/ScaleButton';
+import TabTransition from './src/components/TabTransition';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, ZoomIn } from 'react-native-reanimated';
 
 const MainScreen = () => {
   const { user } = useAuth();
-  const { habits, addHabit, archiveHabit, isHabitDue, settings, updateSettings, isInsightsUnlocked, unlockTheme } = useHabits();
+  const { habits, addHabit, archiveHabit, isHabitDue, settings, updateSettings, isInsightsUnlocked, unlockTheme, calculateStreak } = useHabits();
+  const { showAlert } = useAlert();
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'resources', 'social', 'settings'
   const [isViewSwitcherOpen, setViewSwitcherOpen] = useState(false);
   const [isCreateModalVisible, setCreateModalVisible] = useState(false);
@@ -54,6 +63,20 @@ const MainScreen = () => {
   const [shareHabit, setShareHabit] = useState(null);
   const [widgetConfigId, setWidgetConfigId] = useState(null);
   const [widgetConfigName, setWidgetConfigName] = useState(null);
+
+  // Pulse animation for empty state
+  const pulseScale = useSharedValue(1);
+  useEffect(() => {
+    pulseScale.value = withRepeat(
+      withTiming(1.1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }]
+  }));
 
   // Onboarding State
   const [hasLaunched, setHasLaunched] = useState(null); // null = loading, false = first time, true = returning
@@ -161,11 +184,20 @@ const MainScreen = () => {
   }, []);
 
   const handleWidgetConfigSelect = async (habit) => {
-    if (!widgetConfigId) return;
-
     try {
-      const existingConfigStr = await AsyncStorage.getItem('widget_config');
-      const config = existingConfigStr ? JSON.parse(existingConfigStr) : {};
+      if (!widgetConfigId) {
+        console.error('[App] No widgetConfigId found when selecting habit');
+        return;
+      }
+
+      console.log('[App] Selecting habit for Widget ID:', widgetConfigId);
+
+      // Use StorageService
+      const { default: StorageService } = await import('./src/services/StorageService');
+      const { default: WidgetService } = await import('./src/services/WidgetService');
+
+      const config = await StorageService.getWidgetConfig();
+      console.log('[DEBUG] Loaded existing config:', JSON.stringify(config));
 
       const widgetName = widgetConfigName || 'HabitWidget';
       const parsedId = parseInt(widgetConfigId, 10);
@@ -176,45 +208,49 @@ const MainScreen = () => {
         widgetName: widgetName
       };
 
-      await AsyncStorage.setItem('widget_config', JSON.stringify(config));
+      console.log('[DEBUG] Saving new config:', JSON.stringify(config));
+      await StorageService.saveWidgetConfig(config);
 
-      const renderWidgetContent = () => {
-        const commonProps = {
-          name: habit.name,
-          streak: habit.streak || 0,
-          color: habit.color,
-          completedDates: habit.completedDates || habit.logs || {},
-          icon: habit.icon,
-          habitId: habit.id,
-          weekStart: settings.weekStart,
-          showStreak: settings.showStreakCount,
-          showLabels: settings.showDayLabels
-        };
-
-        switch (widgetName) {
-          case 'HabitListWidget':
-            return <HabitListWidget habits={activeHabits} />;
-          case 'HabitGridWidget':
-            return <HabitGridWidget {...commonProps} />;
-          case 'HabitWeekWidget':
-            return <HabitWeekWidget {...commonProps} />;
-          case 'HabitStreakWidget':
-            return <HabitStreakWidget {...commonProps} />;
-          default:
-            return <HabitWidget {...commonProps} />;
-        }
+      // Prepare data for immediate render
+      const habitWithStreak = {
+        ...habit,
+        streak: habits.find(h => h.id === habit.id)?.streak || 0 // Use streak from context or calc it? Context has it via stats.
+        // Wait, habits from useHabits might not have calculated streak property attached to object?
+        // useHabits context value 'habits' are raw data.
+        // We need to calculate streak or let WidgetService do it.
+        // WidgetService.renderWidget expects 'habitsWithStreak' list OR we can just pass the list.
       };
 
-      requestWidgetUpdate({
-        widgetName: widgetName,
-        renderWidget: renderWidgetContent,
-        widgetId: parsedId,
-      });
+      // Let's reuse WidgetService.renderWidget but it expects a list.
+      // We can construct a list with just our habit.
+      // BUT current 'activeHabits' in App.js is raw habits.
+      // WidgetService logic: const habit = habitsWithStreak.find(...)
+
+      // Let's just trigger a full update for this specific widget using WidgetService logic if possible?
+      // WidgetService.renderWidget takes 'configEntry' and 'habitsWithStreak'.
+
+      // We need to calculate streak. 
+      // check 'calculateStreak' from context.
+      const fullHabit = {
+        ...habit,
+        streak: calculateStreak(habit)
+      };
+
+      await WidgetService.renderWidget(strId, config[strId], [fullHabit], settings);
 
       setWidgetConfigId(null);
-      alert(`Widget linked to ${habit.name}!`);
+      setWidgetConfigName(null);
+      showAlert('Success', `Widget linked to ${habit.name}!`);
+
+      // Trigger a full sync of all widgets to be safe?
+      // useWidgetSync will likely pick this up if we touched storage, but useWidgetSync doesn't listen to storage.
+      // It listens to habits.
+      // So we should manually update the specific widget here (done above) and maybe others?
+      // No, others are fine.
+
     } catch (e) {
       console.error('Failed to configure widget', e);
+      showAlert('Error', 'Failed to configure widget.');
     }
   };
 
@@ -266,30 +302,55 @@ const MainScreen = () => {
     await MonetizationService.openDonation();
   };
 
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationMessage, setCelebrationMessage] = useState('');
+  const [isShareLoading, setShareLoading] = useState(false);
+
   const handleInsightsPress = () => {
     if (isInsightsUnlocked()) {
-      setInsightsVisible(true);
+      try {
+        setInsightsVisible(true);
+      } catch (error) {
+        console.error("Error opening insights:", error);
+      }
     } else {
-      Alert.alert(
+      showAlert(
         "Premium Insights Locked",
         "Unlock detailed stats and charts for 3 days by sharing the app!",
         [
           { text: "Cancel", style: "cancel" },
           {
-            text: "Share to Unlock",
+            text: isShareLoading ? "Verifying..." : "Share to Unlock",
             onPress: async () => {
-              const success = await MonetizationService.unlockViaShare('insights');
-              if (success) {
-                unlockTheme('insights'); // Reuse unlockTheme
-                Alert.alert("Unlocked!", "Insights unlocked for 3 days.");
-                setInsightsVisible(true);
+              if (isShareLoading) return;
+              setShareLoading(true);
+
+              try {
+                const success = await MonetizationService.unlockViaShare('insights');
+
+                setShareLoading(false);
+
+                if (success) {
+                  unlockTheme('insights', 'Premium Insights');
+                  setCelebrationMessage("Insights unlocked for 3 days. Enjoy!");
+                  setShowCelebration(true);
+                  // Open after a brief delay so they see the celebration first? 
+                  // Or let them open it manually. 
+                  // Let's open it automatically after celebration closure or just let them click again.
+                  // For now, let's just celebrate.
+                  setTimeout(() => setInsightsVisible(true), 2500); // Auto-open after party
+                }
+              } catch (e) {
+                setShareLoading(false);
+                showAlert("Error", "Something went wrong.");
               }
             }
           }
         ]
       );
     }
-  };
+  }
+
 
   if (hasLaunched === null) return null;
 
@@ -323,13 +384,13 @@ const MainScreen = () => {
   const backgroundColor = getBackgroundColor();
 
   const renderHomeContent = () => (
-    <View style={{ flex: 1, display: activeTab === 'home' ? 'flex' : 'none' }}>
+    <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>HabitU</Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity onPress={handleInsightsPress} style={styles.iconButton}>
+          <ScaleButton onPress={handleInsightsPress} style={styles.iconButton}>
             <TrendingUp color="#a1a1aa" size={20} />
-          </TouchableOpacity>
+          </ScaleButton>
         </View>
       </View>
 
@@ -340,7 +401,7 @@ const MainScreen = () => {
           <View style={[styles.viewSwitcher, isViewSwitcherOpen && { paddingRight: 8 }]}>
             {/* If Closed, show ONLY the active one (as a toggle) */}
             {!isViewSwitcherOpen && (
-              <TouchableOpacity
+              <ScaleButton
                 style={[styles.viewButton, { backgroundColor: accentColor }]}
                 onPress={() => {
                   LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -350,13 +411,13 @@ const MainScreen = () => {
                 {settings.viewMode === 'list' && <List color="#000" size={20} />}
                 {settings.viewMode === 'grid' && <Grid color="#000" size={20} />}
                 {settings.viewMode === 'streak' && <Flame color="#000" size={20} />}
-              </TouchableOpacity>
+              </ScaleButton>
             )}
 
             {/* If Open, show ALL options */}
             {isViewSwitcherOpen && (
               <>
-                <TouchableOpacity
+                <ScaleButton
                   style={[styles.viewButton, settings.viewMode === 'list' && { backgroundColor: accentColor }]}
                   onPress={() => {
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -365,9 +426,9 @@ const MainScreen = () => {
                   }}
                 >
                   <List color={settings.viewMode === 'list' ? '#000' : '#a1a1aa'} size={20} />
-                </TouchableOpacity>
+                </ScaleButton>
 
-                <TouchableOpacity
+                <ScaleButton
                   style={[styles.viewButton, settings.viewMode === 'grid' && { backgroundColor: accentColor }]}
                   onPress={() => {
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -376,9 +437,9 @@ const MainScreen = () => {
                   }}
                 >
                   <Grid color={settings.viewMode === 'grid' ? '#000' : '#a1a1aa'} size={20} />
-                </TouchableOpacity>
+                </ScaleButton>
 
-                <TouchableOpacity
+                <ScaleButton
                   style={[styles.viewButton, settings.viewMode === 'streak' && { backgroundColor: accentColor }]}
                   onPress={() => {
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -387,23 +448,28 @@ const MainScreen = () => {
                   }}
                 >
                   <Flame color={settings.viewMode === 'streak' ? '#000' : '#a1a1aa'} size={20} />
-                </TouchableOpacity>
+                </ScaleButton>
               </>
             )}
           </View>
         </View>
 
         {todaysHabits.length === 0 ? (
-          <View style={styles.emptyStateContainer}>
-            <View style={[styles.emptyIconBg, { backgroundColor: `${accentColor}20`, borderColor: `${accentColor}40` }]}>
-              <Plus color={accentColor} size={40} />
-            </View>
+          <Animated.View entering={ZoomIn.duration(500)} style={styles.emptyStateContainer}>
+            <ScaleButton
+              style={[styles.emptyIconBg, { backgroundColor: `${accentColor}20`, borderColor: `${accentColor}40` }]}
+              onPress={() => setCreateModalVisible(true)}
+            >
+              <Animated.View style={animatedPulseStyle}>
+                <Plus color={accentColor} size={40} />
+              </Animated.View>
+            </ScaleButton>
             <Text style={styles.emptyStateTitle}>No Habits Due Today</Text>
             <Text style={styles.emptyStateSubtitle}>You're all caught up! Or create a new habit to get started.</Text>
-            <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={[styles.createButton, { backgroundColor: accentColor }]}>
+            <ScaleButton onPress={() => setCreateModalVisible(true)} style={[styles.createButton, { backgroundColor: accentColor }]}>
               <Text style={styles.createButtonText}>Create Habit</Text>
-            </TouchableOpacity>
-          </View>
+            </ScaleButton>
+          </Animated.View>
         ) : (
           <>
             {settings.viewMode === 'list' && (
@@ -420,12 +486,14 @@ const MainScreen = () => {
 
             {settings.viewMode === 'grid' && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
-                {todaysHabits.map(habit => (
+                {todaysHabits.map((habit, index) => (
                   <View key={habit.id} style={{ width: '50%' }}>
-                    <HabitGridItem
-                      habit={habit}
-                      onPress={() => setActionHabit(habit)}
-                    />
+                    <FadeInView delay={index * 50} duration={500} style={{ flex: 1 }}>
+                      <HabitGridItem
+                        habit={habit}
+                        onPress={() => setActionHabit(habit)}
+                      />
+                    </FadeInView>
                   </View>
                 ))}
               </View>
@@ -445,12 +513,13 @@ const MainScreen = () => {
                   };
                   return getStreak(b) - getStreak(a);
                 })
-                .map(habit => (
-                  <HabitStreakItem
-                    key={habit.id}
-                    habit={habit}
-                    onPress={() => setActionHabit(habit)}
-                  />
+                .map((habit, index) => (
+                  <FadeInView key={habit.id} delay={index * 50} duration={500}>
+                    <HabitStreakItem
+                      habit={habit}
+                      onPress={() => setActionHabit(habit)}
+                    />
+                  </FadeInView>
                 ))
             )}
           </>
@@ -466,47 +535,49 @@ const MainScreen = () => {
 
       {/* Tab Content Container */}
       <View style={{ flex: 1 }}>
-        {renderHomeContent()}
+        <TabTransition isActive={activeTab === 'home'}>
+          {renderHomeContent()}
+        </TabTransition>
 
-        <View style={{ flex: 1, display: activeTab === 'resources' ? 'flex' : 'none' }}>
+        <TabTransition isActive={activeTab === 'resources'}>
           <ResourcesScreen onClose={() => setActiveTab('home')} />
-        </View>
+        </TabTransition>
 
-        <View style={{ flex: 1, display: activeTab === 'social' ? 'flex' : 'none' }}>
+        <TabTransition isActive={activeTab === 'social'}>
           <SocialScreen onClose={() => setActiveTab('home')} />
-        </View>
+        </TabTransition>
 
-        <View style={{ flex: 1, display: activeTab === 'settings' ? 'flex' : 'none' }}>
+        <TabTransition isActive={activeTab === 'settings'}>
           <SettingsScreen
             onClose={() => setActiveTab('home')}
             onOpenArchive={() => setArchiveVisible(true)}
           />
-        </View>
+        </TabTransition>
       </View>
 
       {/* Bottom Navigation */}
       {/* Bottom Navigation - Hidden on Login Screen */}
       {!(activeTab === 'social' && !user) && (
         <View style={[styles.navbar, { width: '90%', left: '5%' }]}>
-          <TouchableOpacity onPress={() => setActiveTab('home')}>
+          <ScaleButton onPress={() => setActiveTab('home')}>
             <LayoutDashboard color={activeTab === 'home' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
+          </ScaleButton>
 
-          <TouchableOpacity onPress={() => setActiveTab('resources')}>
+          <ScaleButton onPress={() => setActiveTab('resources')}>
             <BookOpen color={activeTab === 'resources' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
+          </ScaleButton>
 
-          <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={[styles.fab, { backgroundColor: accentColor, shadowColor: accentColor, borderColor: backgroundColor }]}>
+          <ScaleButton onPress={() => setCreateModalVisible(true)} style={[styles.fab, { backgroundColor: accentColor, shadowColor: accentColor, borderColor: backgroundColor }]}>
             <Plus color="#000" size={24} />
-          </TouchableOpacity>
+          </ScaleButton>
 
-          <TouchableOpacity onPress={() => setActiveTab('social')}>
+          <ScaleButton onPress={() => setActiveTab('social')}>
             <Users color={activeTab === 'social' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
+          </ScaleButton>
 
-          <TouchableOpacity onPress={() => setActiveTab('settings')}>
+          <ScaleButton onPress={() => setActiveTab('settings')}>
             <Settings color={activeTab === 'settings' ? accentColor : "#a1a1aa"} size={24} />
-          </TouchableOpacity>
+          </ScaleButton>
         </View>
       )}
 
@@ -548,37 +619,71 @@ const MainScreen = () => {
         </Modal>
       )}
 
-      {/* Widget Configuration Modal (Existing code) */}
+      {/* Widget Configuration Modal */}
       <Modal
         visible={!!widgetConfigId}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setWidgetConfigId(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Habit for Widget</Text>
-            <ScrollView style={{ maxHeight: 400 }}>
-              {activeHabits.map(habit => (
-                <TouchableOpacity
-                  key={habit.id}
-                  style={styles.habitOption}
-                  onPress={() => handleWidgetConfigSelect(habit)}
+
+            {activeHabits.length > 0 ? (
+              <FlatList
+                data={activeHabits}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 8 }}
+                renderItem={({ item }) => (
+                  <ScaleButton
+                    style={styles.habitOption}
+                    onPress={() => handleWidgetConfigSelect(item)}
+                  >
+                    <Text style={styles.habitOptionIcon}>{item.icon === 'star' ? '⭐' : '📝'}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.habitOptionText}>{item.name}</Text>
+                      <Text style={{ fontSize: 12, color: '#a1a1aa' }}>
+                        {item.category || 'General'}
+                      </Text>
+                    </View>
+                    <Plus size={20} color="#52525b" />
+                  </ScaleButton>
+                )}
+              />
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                <Text style={{ color: '#a1a1aa', textAlign: 'center', marginBottom: 20, fontSize: 16 }}>
+                  No active habits found.{'\n'}Add one to start using widgets.
+                </Text>
+                <ScaleButton
+                  style={[styles.createButton, { backgroundColor: '#2dd4bf' }]}
+                  onPress={() => {
+                    setWidgetConfigId(null);
+                    setTimeout(() => setCreateModalVisible(true), 500);
+                  }}
                 >
-                  <Text style={styles.habitOptionIcon}>{habit.icon === 'star' ? '⭐' : '📝'}</Text>
-                  <Text style={styles.habitOptionText}>{habit.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
+                  <Text style={styles.createButtonText}>Create Habit</Text>
+                </ScaleButton>
+              </View>
+            )}
+
+            <ScaleButton
               style={styles.closeButton}
               onPress={() => setWidgetConfigId(null)}
             >
               <Text style={styles.closeButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            </ScaleButton>
           </View>
         </View>
       </Modal>
+
+      <CelebrationModal
+        visible={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        message={celebrationMessage}
+      />
     </SafeAreaView >
   );
 };
@@ -589,7 +694,10 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <HabitProvider>
-          <MainScreen />
+          <AlertProvider>
+            <MainScreen />
+            <CustomAlert />
+          </AlertProvider>
         </HabitProvider>
       </AuthProvider>
     </GestureHandlerRootView>
@@ -640,6 +748,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 100, // Ensure on top of TabTransition
+    elevation: 100,
   },
   fab: {
     width: 48, // Reduced from 56
@@ -655,7 +765,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 101, // FAB higher than navbar
+    zIndex: 101,
   },
   emptyStateContainer: {
     alignItems: 'center',

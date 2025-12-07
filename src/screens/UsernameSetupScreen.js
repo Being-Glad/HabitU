@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, Alert, BackHandler, Platform, StatusBar, KeyboardAvoidingView } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 
 const UsernameSetupScreen = () => {
     const { updateUsername, logout, user } = useAuth();
+    const { showAlert } = useAlert();
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
 
@@ -29,7 +31,7 @@ const UsernameSetupScreen = () => {
     }, [user]);
 
     const handleBack = () => {
-        Alert.alert('Cancel Setup?', 'Do you want to go back to the login screen?', [
+        showAlert('Cancel Setup?', 'Do you want to go back to the login screen?', [
             { text: 'No', style: 'cancel', onPress: () => { } },
             { text: 'Yes', style: 'destructive', onPress: () => logout() },
         ]);

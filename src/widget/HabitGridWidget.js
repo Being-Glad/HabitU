@@ -1,7 +1,23 @@
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
-export function HabitGridWidget({ name, streak, color, completedDates = {}, icon, habitId }) {
+export function HabitGridWidget(props) {
+    const { name, streak, color, completedDates = {}, icon, habitId, width, height } = props;
+
+    // Default inactive to ensuring visibility against black background
+    const inactiveColor = '#27272a'; // Zinc-800 is okay, but let's go simpler if needed. 
+    // Actually user said "not visible". 
+    // Maybe they want to see empty slots clearly? #27272a is fine, but lets ensure alpha is 100%.
+
+    // Dynamic Sizing
+    // Cell: 12dp. Gap: 4dp. Column: 16dp.
+    // Padding: 24dp (12+12).
+    // Available Width default: 300dp?
+    const availableWidth = (width || 320) - 24;
+    const weeksToFit = Math.floor(availableWidth / 16);
+    const totalWeeks = Math.max(12, weeksToFit); // At least 12 weeks
+    const totalDays = totalWeeks * 7;
+
     const today = new Date();
 
     // Align to Monday (Calendar Week view)
@@ -12,10 +28,6 @@ export function HabitGridWidget({ name, streak, color, completedDates = {}, icon
 
     const currentWeekStart = new Date(today);
     currentWeekStart.setDate(today.getDate() - daysSinceMonday);
-
-    // Show 24 weeks (approx 6 months) with larger cells
-    const totalWeeks = 24;
-    const totalDays = totalWeeks * 7;
 
     const startDate = new Date(currentWeekStart);
     startDate.setDate(currentWeekStart.getDate() - ((totalWeeks - 1) * 7));
@@ -73,7 +85,6 @@ export function HabitGridWidget({ name, streak, color, completedDates = {}, icon
 
     // Use habit color (App Core) or default Teal
     const activeColor = color || '#2dd4bf';
-    const inactiveColor = '#27272a'; // Zinc-800
 
     return (
         <FlexWidget
@@ -197,18 +208,18 @@ export function HabitGridWidget({ name, streak, color, completedDates = {}, icon
                             flexDirection: 'column',
                             justifyContent: 'space-between',
                             height: 'match_parent',
-                            marginRight: 4 // Increased gap (was 2)
+                            marginRight: 4 // Reduced gap
                         }}
                     >
                         {week.map((dateStr, dIndex) => (
                             <FlexWidget
                                 key={dIndex}
                                 style={{
-                                    width: 12, // Larger cells (was 6)
+                                    width: 12, // Larger cells
                                     height: 12,
                                     backgroundColor: completedDates[dateStr] ? activeColor : inactiveColor,
-                                    borderRadius: 4, // More rounded edges (was 2)
-                                    marginBottom: 4 // Increased gap (was 2)
+                                    borderRadius: 4,
+                                    marginBottom: 4
                                 }}
                             />
                         ))}

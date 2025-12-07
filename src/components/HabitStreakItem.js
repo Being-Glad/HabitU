@@ -5,7 +5,7 @@ import { getIcon } from '../utils/iconMap';
 import { Flame, Check } from 'lucide-react-native';
 import { useHabits } from '../context/HabitContext';
 import { format } from 'date-fns';
-import AnimatedPressable from './AnimatedPressable';
+import ScaleButton from './ScaleButton';
 
 const HabitStreakItem = ({ habit, onPress }) => {
     const { toggleHabit, settings } = useHabits();
@@ -42,9 +42,10 @@ const HabitStreakItem = ({ habit, onPress }) => {
     const streak = getStreak();
 
     return (
-        <AnimatedPressable
+        <ScaleButton
             onPress={onPress}
             style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
+            activeOpacity={0.9}
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <View style={[styles.iconBox, { backgroundColor: `${habit.color}20` }]}>
@@ -67,9 +68,9 @@ const HabitStreakItem = ({ habit, onPress }) => {
                     <Text style={[styles.streakLabel, { color: subTextColor }]}>Current Streak</Text>
                 </View>
 
-                <AnimatedPressable
+                <ScaleButton
                     onPress={() => {
-                        // Haptics handled by AnimatedPressable
+                        // Haptics handled by ScaleButton
                         toggleHabit(habit.id, today);
                     }}
                     style={[
@@ -79,15 +80,16 @@ const HabitStreakItem = ({ habit, onPress }) => {
                             borderColor: isCompleted ? habit.color : subTextColor
                         }
                     ]}
+                    scaleTo={0.8}
                 >
                     {isCompleted && (
                         <Animated.View entering={ZoomIn.springify().damping(12)}>
                             <Check color="#000" size={16} />
                         </Animated.View>
                     )}
-                </AnimatedPressable>
+                </ScaleButton>
             </View>
-        </AnimatedPressable>
+        </ScaleButton>
     );
 };
 

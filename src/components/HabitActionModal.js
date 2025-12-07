@@ -1,14 +1,16 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Dimensions, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Dimensions, ScrollView } from 'react-native';
 import { X, Check, SkipForward, Edit2, Archive, Trash2, Calendar, TrendingUp, Share2 } from 'lucide-react-native';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, subMonths, getDay } from 'date-fns';
 import { useHabits } from '../context/HabitContext';
 import { getIcon } from '../utils/iconMap';
+import { useAlert } from '../context/AlertContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const HabitActionModal = ({ habit: initialHabit, visible, onClose, onAction }) => {
     const { habits, toggleHabit, deleteHabit, calculateHabitStrength, calculateStreak } = useHabits();
+    const { showAlert } = useAlert();
 
     const habit = useMemo(() => {
         return habits.find(h => h.id === initialHabit?.id) || initialHabit;
@@ -80,7 +82,7 @@ const HabitActionModal = ({ habit: initialHabit, visible, onClose, onAction }) =
     };
 
     const handleDelete = () => {
-        Alert.alert(
+        showAlert(
             "Delete Habit",
             "Are you sure? This cannot be undone.",
             [

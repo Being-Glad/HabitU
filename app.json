@@ -23,12 +23,17 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.being_glad.habitu",
-      "googleServicesFile": "./android/app/google-services.json",
+      "googleServicesFile": "./google-services.json",
       "statusBar": {
         "hidden": true
       }
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#2dd4bf"
+    },
     "plugins": [
+      "expo-notifications",
       [
         "react-native-android-widget",
         {

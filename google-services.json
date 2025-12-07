@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "311092351994",
+    "project_id": "habitu-82038",
+    "storage_bucket": "habitu-82038.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:311092351994:android:6e5af792a7dd1b71570a43",
+        "android_client_info": {
+          "package_name": "com.being_glad.habitu"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "311092351994-5ghua3e4htr879cte85islclpmuogk2a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.being_glad.habitu",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "311092351994-5hds1vevcap6f1k2fucqd6vvttl9jdbn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANo4i2lyOmzpyl9A02U5yHh3zaEoyMhqw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "311092351994-5hds1vevcap6f1k2fucqd6vvttl9jdbn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

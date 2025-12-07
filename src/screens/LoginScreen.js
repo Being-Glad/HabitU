@@ -54,7 +54,7 @@ const LoginScreen = ({ onClose }) => {
                     </TouchableOpacity>
 
                     <Text style={styles.disclaimer}>
-                        Everything on device. Guest mode enables offline leaderboards only.
+                        Your data remains secure and private on your device. Sign in anytime to sync your progress.
                     </Text>
                 </View>
             </View>

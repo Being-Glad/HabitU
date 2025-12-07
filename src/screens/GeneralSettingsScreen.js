@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 20,
+        paddingBottom: 150,
     },
     sectionHeader: {
         fontSize: 12,

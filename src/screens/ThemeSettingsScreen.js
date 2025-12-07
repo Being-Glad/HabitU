@@ -1,36 +1,40 @@
+
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Platform, StatusBar } from 'react-native';
-import { ArrowLeft, Check, Lock } from 'lucide-react-native';
+import { Share2, Lock, Check, ArrowLeft } from 'lucide-react-native';
 import { useHabits } from '../context/HabitContext';
+import { useAlert } from '../context/AlertContext';
 import { MonetizationService } from '../services/MonetizationService';
 import { Alert } from 'react-native';
+import CelebrationModal from '../components/CelebrationModal';
 
 const ACCENT_COLORS = [
-    { name: 'Teal', value: '#0d9488' }, // Darker Teal (700)
-    { name: 'Blue', value: '#2563eb' }, // Darker Blue (600)
-    { name: 'Purple', value: '#9333ea' }, // Darker Purple (600)
-    { name: 'Rose', value: '#e11d48' }, // Darker Rose (600)
-    { name: 'Orange', value: '#ea580c' }, // Darker Orange (600)
-    { name: 'Green', value: '#16a34a' }, // Darker Green (600)
-    { name: 'Yellow', value: '#ca8a04' }, // Darker Yellow/Gold (600)
-    { name: 'Red', value: '#dc2626' }, // Darker Red (600)
-    { name: 'Pink', value: '#db2777' }, // Darker Pink (600)
-    { name: 'Indigo', value: '#4f46e5' }, // Darker Indigo (600)
-    { name: 'Cyan', value: '#0891b2' }, // Darker Cyan (600)
-    { name: 'Lime', value: '#65a30d' }, // Darker Lime (600)
-    { name: 'Amber', value: '#d97706' }, // Darker Amber (600)
+    { name: 'Teal', value: '#26A69A' }, // Muted Teal
+    { name: 'Blue', value: '#42A5F5' }, // Muted Blue
+    { name: 'Purple', value: '#AB47BC' }, // Muted Purple
+    { name: 'Rose', value: '#EC407A' }, // Muted Rose
+    { name: 'Orange', value: '#FF7043' }, // Muted Orange
+    { name: 'Green', value: '#66BB6A' }, // Muted Green
+    { name: 'Yellow', value: '#FBC02D' }, // Muted Gold
+    { name: 'Red', value: '#EF5350' }, // Muted Red
+    { name: 'Pink', value: '#F06292' }, // Muted Pink
+    { name: 'Indigo', value: '#5C6BC0' }, // Muted Indigo
+    { name: 'Cyan', value: '#26C6DA' }, // Muted Cyan
+    { name: 'Lime', value: '#9CCC65' }, // Muted Lime
+    { name: 'Amber', value: '#FFA726' }, // Muted Amber
 ];
 
 const BACKGROUND_THEMES = [
-    { id: 'light', name: 'Light', value: '#ffffff' },
-    { id: 'dark', name: 'Dark (Default)', value: '#0f0f0f' },
-    { id: 'midnight', name: 'Midnight (OLED)', value: '#000000' },
-    { id: 'slate', name: 'Slate', value: '#0f172a' },
-    { id: 'coffee', name: 'Coffee', value: '#1c1917' },
+    { id: 'light', name: 'Light', value: '#ffffff', free: true },
+    { id: 'dark', name: 'Dark (Default)', value: '#0f0f0f', free: true },
+    { id: 'midnight', name: 'Midnight (OLED)', value: '#000000', free: false },
+    { id: 'slate', name: 'Slate', value: '#0f172a', free: false },
+    { id: 'coffee', name: 'Coffee', value: '#1c1917', free: false },
 ];
 
 const ThemeSettingsScreen = ({ onClose }) => {
     const { settings, updateSettings, unlockTheme, isThemeUnlocked, unlockedThemes } = useHabits();
+    const { showAlert } = useAlert();
     const currentAccent = settings.accentColor || '#2dd4bf';
     const currentTheme = settings.theme || 'dark';
 
@@ -41,6 +45,10 @@ const ThemeSettingsScreen = ({ onClose }) => {
     const borderColor = isLight ? '#e4e4e7' : '#27272a';
     const backgroundColor = BACKGROUND_THEMES.find(t => t.id === currentTheme)?.value || '#0f0f0f';
 
+    const [showCelebration, setShowCelebration] = React.useState(false);
+    const [celebrationMessage, setCelebrationMessage] = React.useState('');
+    const [isLoading, setIsLoading] = React.useState(false);
+
     const handleAccentChange = (color, index) => {
         // First 5 accents are free (indexes 0-4)
         const isLocked = index >= 5 && !(unlockedThemes[color] && unlockedThemes[color] > Date.now());
@@ -48,19 +56,37 @@ const ThemeSettingsScreen = ({ onClose }) => {
         if (!isLocked) {
             updateSettings({ accentColor: color });
         } else {
-            Alert.alert(
+            showAlert(
                 "Premium Color Locked",
                 "Share HabitU with a friend to unlock this color for 3 days!",
                 [
                     { text: "Cancel", style: "cancel" },
                     {
-                        text: "Share App",
+                        text: isLoading ? "Verifying..." : "Share App",
                         onPress: async () => {
+                            if (isLoading) return; // Prevent double tap
+
+                            // 1. Start simulated "verification" UI
+                            setIsLoading(true);
+
+                            // 2. Perform Share
+                            // We need to run this WITHOUT blocking the UI thread ideally,
+                            // but Share.share is async. The delay is inside the service now.
+                            // However, we want the loader to show *after* user returns from share sheet?
+                            // Actually, React Native pauses execution when share sheet opens.
+                            // The delay in service happens AFTER return. So loader will spin then.
+
                             const success = await MonetizationService.unlockViaShare(color);
+
+                            setIsLoading(false);
+
                             if (success) {
-                                unlockTheme(color); // We reuse unlockTheme for accents
+                                unlockTheme(color, ACCENT_COLORS[index].name);
                                 updateSettings({ accentColor: color });
-                                Alert.alert("Unlocked!", "Color unlocked for 3 days. Enjoy!");
+
+                                // 3. Celebration!
+                                setCelebrationMessage("Color unlocked for 3 days. Enjoy!");
+                                setShowCelebration(true);
                             }
                         }
                     }
@@ -69,29 +95,37 @@ const ThemeSettingsScreen = ({ onClose }) => {
         }
     };
 
-    const handleThemeChange = async (themeId) => {
-        if (isThemeUnlocked(themeId)) {
-            updateSettings({ theme: themeId });
-        } else {
-            Alert.alert(
+    const handleThemeChange = (themeId) => {
+        const theme = BACKGROUND_THEMES.find(t => t.id === themeId);
+        // Using isThemeUnlocked for consistency
+        if (!theme.free && !isThemeUnlocked(themeId)) {
+            showAlert(
                 "Premium Theme Locked",
-                "Share HabitU with a friend to unlock this theme for 3 days!",
+                "Unlock this premium theme by sharing the app with a friend!",
                 [
                     { text: "Cancel", style: "cancel" },
                     {
-                        text: "Share App",
+                        text: isLoading ? "Verifying..." : "Share to Unlock",
                         onPress: async () => {
+                            if (isLoading) return;
+                            setIsLoading(true);
+
                             const success = await MonetizationService.unlockViaShare(themeId);
+
+                            setIsLoading(false);
+
                             if (success) {
-                                unlockTheme(themeId);
-                                updateSettings({ theme: themeId });
-                                Alert.alert("Unlocked!", "Theme unlocked for 3 days. Enjoy!");
+                                unlockTheme(themeId, theme.name);
+                                setCelebrationMessage(`You've unlocked the ${theme.name} theme.`);
+                                setShowCelebration(true);
                             }
                         }
                     }
                 ]
             );
+            return;
         }
+        updateSettings({ theme: themeId });
     };
 
     return (
@@ -110,7 +144,17 @@ const ThemeSettingsScreen = ({ onClose }) => {
                 <View style={[styles.section, { backgroundColor: cardColor }]}>
                     <View style={styles.colorGrid}>
                         {ACCENT_COLORS.map((color, index) => {
-                            const isLocked = index >= 5 && !(unlockedThemes[color] && unlockedThemes[color] > Date.now());
+                            const expiry = unlockedThemes[color.value];
+                            const isLocked = index >= 5 && !(expiry && expiry > Date.now());
+
+                            // Calculate remaining time
+                            let remainingText = "";
+                            if (!isLocked && index >= 5 && expiry) {
+                                const diffHrs = (expiry - Date.now()) / (1000 * 60 * 60);
+                                const diffDays = Math.ceil(diffHrs / 24);
+                                remainingText = diffDays > 0 ? `${diffDays}d` : `${Math.ceil(diffHrs)}h`;
+                            }
+
                             return (
                                 <TouchableOpacity
                                     key={color.value}
@@ -119,10 +163,14 @@ const ThemeSettingsScreen = ({ onClose }) => {
                                         { backgroundColor: color.value },
                                         currentAccent === color.value && [styles.selectedColor, { borderColor: textColor }]
                                     ]}
-                                    onPress={() => handleAccentChange(color.value, index)}
+                                    onPress={() => handleAccentChange(color.value, index, color.name)}
                                 >
                                     {isLocked && <Lock color="#fff" size={16} />}
-                                    {currentAccent === color.value && !isLocked && <Check color="#fff" size={20} />}
+                                    {!isLocked && remainingText ? (
+                                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 2 }}>{remainingText}</Text>
+                                    ) : (
+                                        currentAccent === color.value && <Check color="#fff" size={20} />
+                                    )}
                                 </TouchableOpacity>
                             );
                         })}
@@ -131,22 +179,48 @@ const ThemeSettingsScreen = ({ onClose }) => {
 
                 <Text style={[styles.sectionHeader, { color: subTextColor }]}>Background</Text>
                 <View style={[styles.section, { backgroundColor: cardColor }]}>
-                    {BACKGROUND_THEMES.map((theme, index) => (
-                        <View key={theme.id}>
-                            <TouchableOpacity
-                                style={styles.themeOption}
-                                onPress={() => handleThemeChange(theme.id)}
-                            >
-                                <View style={[styles.themePreview, { backgroundColor: theme.value, borderColor }]} />
-                                <Text style={[styles.themeLabel, { color: textColor }]}>{theme.name}</Text>
-                                {!isThemeUnlocked(theme.id) && <Lock color={subTextColor} size={16} style={{ marginRight: 8 }} />}
-                                {currentTheme === theme.id && <Check color={currentAccent} size={20} />}
-                            </TouchableOpacity>
-                            {index < BACKGROUND_THEMES.length - 1 && <View style={[styles.separator, { backgroundColor: borderColor }]} />}
-                        </View>
-                    ))}
+                    {BACKGROUND_THEMES.map((theme, index) => {
+                        const expiry = unlockedThemes[theme.id];
+                        const isUnlocked = isThemeUnlocked(theme.id);
+
+                        let remainingText = "";
+                        // If it's a paid theme, unlocked, and has an expiry date
+                        if (!theme.free && isUnlocked && expiry) {
+                            const diffHrs = (expiry - Date.now()) / (1000 * 60 * 60);
+                            const diffDays = Math.ceil(diffHrs / 24);
+                            remainingText = diffDays > 0 ? `${diffDays}d` : `${Math.ceil(diffHrs)}h`;
+                        }
+
+                        return (
+                            <View key={theme.id}>
+                                <TouchableOpacity
+                                    style={styles.themeOption}
+                                    onPress={() => handleThemeChange(theme.id)}
+                                >
+                                    <View style={[styles.themePreview, { backgroundColor: theme.value, borderColor }]} />
+                                    <Text style={[styles.themeLabel, { color: textColor }]}>{theme.name}</Text>
+
+                                    {/* Status Icons/Text */}
+                                    {!isUnlocked && <Lock color={subTextColor} size={16} style={{ marginRight: 8 }} />}
+
+                                    {isUnlocked && remainingText ? (
+                                        <Text style={{ color: currentAccent, fontSize: 13, fontWeight: '600', marginRight: 12 }}>{remainingText}</Text>
+                                    ) : (
+                                        currentTheme === theme.id && <Check color={currentAccent} size={20} />
+                                    )}
+                                </TouchableOpacity>
+                                {index < BACKGROUND_THEMES.length - 1 && <View style={[styles.separator, { backgroundColor: borderColor }]} />}
+                            </View>
+                        );
+                    })}
                 </View>
             </ScrollView>
+
+            <CelebrationModal
+                visible={showCelebration}
+                onClose={() => setShowCelebration(false)}
+                message={celebrationMessage}
+            />
         </SafeAreaView>
     );
 };
@@ -172,6 +246,7 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 20,
+        paddingBottom: 150,
     },
     sectionHeader: {
         fontSize: 14,

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Switch, Platform, Linking, Alert, StatusBar } from 'react-native';
-import { ArrowLeft, List, Palette, Archive, ArrowUpDown, Globe, Shield, Lock, Star, MessageSquare, ChevronRight, LogOut, User, Copy, HelpCircle, BookOpen, Gift } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Switch, Platform, Linking, Alert, StatusBar, BackHandler, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { ArrowLeft, List, Palette, Archive, ArrowUpDown, Globe, Shield, Lock, Star, MessageSquare, ChevronRight, LogOut, User, Copy, HelpCircle, BookOpen, Gift, Edit2, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import GeneralSettingsScreen from './GeneralSettingsScreen';
 import ArchivedHabitsScreen from './ArchivedHabitsScreen';
 import ReorderHabitsScreen from './ReorderHabitsScreen';
 import ThemeSettingsScreen from './ThemeSettingsScreen';
+import DataSettingsScreen from './DataSettingsScreen';
 import LegalScreen from './LegalScreen';
 import FAQScreen from './FAQScreen';
 import ResourcesScreen from './ResourcesScreen';
@@ -16,13 +17,34 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Clipboard from 'expo-clipboard';
 import { useHabits } from '../context/HabitContext';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import AnimatedPressable from '../components/AnimatedPressable';
 import FadeInView from '../components/FadeInView';
 
 const SettingsScreen = ({ onClose, onOpenArchive }) => {
-    const { habits, importHabits } = useHabits();
-    const { user, logout } = useAuth();
-    const [currentScreen, setCurrentScreen] = useState('main'); // main, general, archived, reorder, theme, privacy, terms, faq, resources
+    const { habits, importHabits, resetApp, settings } = useHabits();
+    const { user, logout, updateUsername } = useAuth();
+    const { showAlert } = useAlert();
+    const [currentScreen, setCurrentScreen] = useState('main'); // main, general, archived, reorder, theme, privacy, terms, faq, resources, data
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [newUsername, setNewUsername] = useState(user?.username || '');
+
+    useEffect(() => {
+        const backAction = () => {
+            if (currentScreen !== 'main') {
+                setCurrentScreen('main');
+                return true;
+            }
+            return false;
+        };
+
+        const backHandler = BackHandler.addEventListener(
+            'hardwareBackPress',
+            backAction
+        );
+
+        return () => backHandler.remove();
+    }, [currentScreen]);
 
     if (currentScreen === 'general') {
         return <GeneralSettingsScreen onClose={() => setCurrentScreen('main')} />;
@@ -38,6 +60,10 @@ const SettingsScreen = ({ onClose, onOpenArchive }) => {
 
     if (currentScreen === 'theme') {
         return <ThemeSettingsScreen onClose={() => setCurrentScreen('main')} />;
+    }
+
+    if (currentScreen === 'data') {
+        return <DataSettingsScreen onClose={() => setCurrentScreen('main')} />;
     }
 
     if (currentScreen === 'privacy') {
@@ -60,105 +86,17 @@ const SettingsScreen = ({ onClose, onOpenArchive }) => {
         Linking.openURL('mailto:support@habitu.com?subject=HabitU Feedback');
     };
 
-    const handleRate = () => {
-        Alert.alert(
-            "Rate HabitU",
-            "If this app were on the App Store, this would take you there! \n\nThanks for using HabitU! ⭐⭐⭐⭐⭐",
-            [{ text: "OK" }]
-        );
-    };
-
-    const handleExport = async () => {
-        Alert.alert(
-            'Export Data',
-            'How would you like to export your data?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Share via App', onPress: shareData },
-                { text: 'Save to Device', onPress: saveToDevice }
-            ]
-        );
-    };
-
-    const getExportData = () => JSON.stringify(habits, null, 2);
-
-    const shareData = async () => {
-        try {
-            const fileUri = FileSystem.cacheDirectory + 'habitu_backup.json';
-            await FileSystem.writeAsStringAsync(fileUri, getExportData());
-            await Sharing.shareAsync(fileUri, {
-                mimeType: 'application/json',
-                dialogTitle: 'Export HabitU Data',
-                UTI: 'public.json'
-            });
-        } catch (error) {
-            Alert.alert('Export Failed', error.message || 'Unknown error occurred');
-            console.error(error);
+    const handleSaveProfile = async () => {
+        if (newUsername.trim().length < 2) {
+            showAlert("Invalid Username", "Username must be at least 2 characters long.");
+            return;
         }
+        await updateUsername(newUsername);
+        setIsEditingProfile(false);
+        showAlert("Success", "Profile updated successfully!");
     };
 
-    const saveToDevice = async () => {
-        if (Platform.OS === 'android') {
-            try {
-                const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-                if (permissions.granted) {
-                    const data = getExportData();
-                    const uri = await FileSystem.StorageAccessFramework.createFileAsync(
-                        permissions.directoryUri,
-                        'habitu_backup.json',
-                        'application/json'
-                    );
-                    await FileSystem.writeAsStringAsync(uri, data, { encoding: FileSystem.EncodingType.UTF8 });
-                    Alert.alert('Success', 'Backup saved successfully!');
-                }
-            } catch (e) {
-                Alert.alert('Error', 'Failed to save to device');
-                console.error(e);
-            }
-        } else {
-            shareData();
-        }
-    };
 
-    const handleImport = async () => {
-        Alert.alert(
-            'Overwrite Data?',
-            'Importing a backup will completely replace your current habits and history. This action cannot be undone.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Import',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const result = await DocumentPicker.getDocumentAsync({
-                                type: 'application/json',
-                                copyToCacheDirectory: true
-                            });
-
-                            if (result.canceled) return;
-
-                            const fileUri = result.assets[0].uri;
-                            const content = await FileSystem.readAsStringAsync(fileUri);
-                            const data = JSON.parse(content);
-
-                            const success = await importHabits(data);
-                            if (success) {
-                                Alert.alert('Success', 'Habits imported successfully!');
-                            } else {
-                                Alert.alert('Error', 'Invalid backup file format.');
-                            }
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to import data');
-                            console.error(error);
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
-    const { settings } = useHabits();
     const currentTheme = settings.theme || 'dark';
     const accentColor = settings.accentColor || '#2dd4bf';
 
@@ -220,38 +158,52 @@ const SettingsScreen = ({ onClose, onOpenArchive }) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                {/* Profile Card */}
+                {/* Profile Card Redesign */}
                 <LinearGradient
                     colors={isLight ? ['#f4f4f5', '#e4e4e7'] : ['#27272a', '#18181b']}
                     style={styles.profileCard}
                 >
-                    <View style={styles.profileInfo}>
-                        <View style={[styles.avatar, { backgroundColor: accentColor }]}>
-                            <Text style={styles.avatarText}>
-                                {user?.username ? user.username.substring(0, 2).toUpperCase() : (user?.name ? user.name.substring(0, 2).toUpperCase() : 'G')}
-                            </Text>
-                        </View>
-                        <View>
-                            <Text style={[styles.profileName, { color: textColor }]}>
-                                {user?.username || user?.name || 'Guest User'}
-                            </Text>
-                            <Text style={[styles.profileEmail, { color: subTextColor }]}>
-                                {user?.isGuest ? 'Guest Mode' : (user?.email || 'Not logged in')}
-                            </Text>
-                            {user?.id && (
-                                <TouchableOpacity onPress={async () => {
-                                    await Clipboard.setStringAsync(user.id);
-                                    Alert.alert("Copied", "User ID copied to clipboard");
-                                }} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                    <Text style={{ color: subTextColor, fontSize: 12, marginRight: 4 }}>ID: {user.id.substring(0, 8)}...</Text>
-                                    <Copy size={12} color={subTextColor} />
-                                </TouchableOpacity>
-                            )}
-                        </View>
+                    <View style={[styles.avatar, { backgroundColor: accentColor, width: 80, height: 80, borderRadius: 40, marginBottom: 16 }]}>
+                        <Text style={[styles.avatarText, { fontSize: 32 }]}>
+                            {user?.username ? user.username.substring(0, 2).toUpperCase() : (user?.name ? user.name.substring(0, 2).toUpperCase() : 'G')}
+                        </Text>
+                        {!user?.isGuest && (
+                            <TouchableOpacity
+                                style={[styles.editBadge, { backgroundColor: cardColor }]}
+                                onPress={() => {
+                                    setNewUsername(user?.username || '');
+                                    setIsEditingProfile(true);
+                                }}
+                            >
+                                <Edit2 size={14} color={textColor} />
+                            </TouchableOpacity>
+                        )}
                     </View>
+
+                    <Text style={[styles.profileName, { color: textColor, fontSize: 22, textAlign: 'center' }]}>
+                        {user?.username || user?.name || 'Guest User'}
+                    </Text>
+
+                    <Text style={[styles.profileEmail, { color: subTextColor, textAlign: 'center', marginBottom: 16 }]}>
+                        {user?.isGuest ? 'Guest Mode' : (user?.email || 'Not logged in')}
+                    </Text>
+
+                    {user?.id && (
+                        <TouchableOpacity onPress={async () => {
+                            await Clipboard.setStringAsync(user.id);
+                            Alert.alert("Copied", "User ID copied to clipboard");
+                        }} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isLight ? '#ffffff' : '#000000', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
+                            <Text style={{ color: subTextColor, fontSize: 12, marginRight: 6, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                                ID: {user.id.substring(0, 8)}...
+                            </Text>
+                            <Copy size={12} color={subTextColor} />
+                        </TouchableOpacity>
+                    )}
+
                     {!user?.isGuest && (
-                        <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-                            <LogOut color={subTextColor} size={20} />
+                        <TouchableOpacity onPress={logout} style={[styles.logoutButton, { marginTop: 20 }]}>
+                            <LogOut color={"#ef4444"} size={20} />
+                            <Text style={{ color: "#ef4444", fontWeight: '600', marginLeft: 8 }}>Log Out</Text>
                         </TouchableOpacity>
                     )}
                 </LinearGradient>
@@ -266,7 +218,7 @@ const SettingsScreen = ({ onClose, onOpenArchive }) => {
 
                 <Text style={[styles.sectionHeader, { color: accentColor, marginTop: 24 }]}>Data & Support</Text>
                 <View style={[styles.section, { backgroundColor: cardColor }]}>
-                    {renderMenuItem(<Globe color={accentColor} size={20} />, "Data Export/Import", handleExport)}
+                    {renderMenuItem(<Globe color={accentColor} size={20} />, "Data Management", () => setCurrentScreen('data'))}
 
                     {renderMenuItem(<Gift color={accentColor} size={20} />, "Support Development", async () => {
                         const { MonetizationService } = require('../services/MonetizationService');
@@ -275,13 +227,48 @@ const SettingsScreen = ({ onClose, onOpenArchive }) => {
                     {renderMenuItem(<HelpCircle color={accentColor} size={20} />, "FAQ & Science", () => setCurrentScreen('faq'))}
                     {renderMenuItem(<Shield color={accentColor} size={20} />, "Privacy Policy", () => setCurrentScreen('privacy'))}
                     {renderMenuItem(<Lock color={accentColor} size={20} />, "Terms of Use", () => setCurrentScreen('terms'))}
-                    {/* <Star color={accentColor} size={20} />, "Rate the app", handleRate */}
-                    {/* Rate App hidden during GitHub Preview phase */}
                     {renderMenuItem(<MessageSquare color={accentColor} size={20} />, "Send feedback", handleFeedback, true)}
                 </View>
 
                 <Text style={styles.versionText}>Version 1.0.0</Text>
             </ScrollView>
+
+            <Modal
+                visible={isEditingProfile}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsEditingProfile(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContentWrapper}>
+                        <View style={[styles.modalContent, { backgroundColor: cardColor }]}>
+                            <View style={styles.modalHeader}>
+                                <Text style={[styles.modalTitle, { color: textColor }]}>Edit Profile</Text>
+                                <TouchableOpacity onPress={() => setIsEditingProfile(false)}>
+                                    <X color={subTextColor} size={24} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={[styles.inputLabel, { color: subTextColor }]}>Username</Text>
+                            <TextInput
+                                style={[styles.input, { color: textColor, borderColor: borderColor, backgroundColor: isLight ? '#fff' : '#000' }]}
+                                value={newUsername}
+                                onChangeText={setNewUsername}
+                                placeholder="Enter username"
+                                placeholderTextColor={subTextColor}
+                                autoCapitalize="none"
+                            />
+
+                            <TouchableOpacity
+                                style={[styles.saveButton, { backgroundColor: accentColor }]}
+                                onPress={handleSaveProfile}
+                            >
+                                <Text style={styles.saveButtonText}>Save Changes</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -308,34 +295,36 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 20,
+        paddingBottom: 120, // Added padding for bottom navbar
     },
     profileCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 20,
+        padding: 24,
         borderRadius: 24,
         marginBottom: 32,
-    },
-    profileInfo: {
-        flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
     },
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
     },
     avatarText: {
         color: '#fff',
-        fontSize: 20,
         fontWeight: 'bold',
     },
+    editBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
     profileName: {
-        fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 4,
     },
@@ -343,6 +332,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
         padding: 8,
     },
     sectionHeader: {
@@ -406,6 +397,58 @@ const styles = StyleSheet.create({
         color: '#52525b',
         marginTop: 20,
         marginBottom: 40,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContentWrapper: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '100%',
+        maxWidth: 340,
+        padding: 24,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#333',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    inputLabel: {
+        fontSize: 14,
+        marginBottom: 8,
+        marginLeft: 4,
+    },
+    input: {
+        width: '100%',
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        fontSize: 16,
+        marginBottom: 24,
+    },
+    saveButton: {
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: '#000',
+        fontSize: 16,
+        fontWeight: 'bold',
     }
 });
 

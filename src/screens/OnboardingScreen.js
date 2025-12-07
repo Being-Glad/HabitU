@@ -22,11 +22,11 @@ if (Platform.OS === 'android') {
 }
 
 const GOALS = [
-    { id: 'health', label: 'Health & Fitness', icon: Activity, color: '#ef4444', habit: { name: 'Exercise', icon: 'activity', color: '#ef4444', category: 'Fitness' } },
-    { id: 'mind', label: 'Mindfulness', icon: Moon, color: '#8b5cf6', habit: { name: 'Meditate', icon: 'moon', color: '#8b5cf6', category: 'Mindfulness' } },
-    { id: 'learning', label: 'Learn Something', icon: BookOpen, color: '#f59e0b', habit: { name: 'Read', icon: 'book', color: '#f59e0b', category: 'Learning' } },
-    { id: 'hydration', label: 'Drink Water', icon: Droplets, color: '#3b82f6', habit: { name: 'Drink Water', icon: 'droplet', color: '#3b82f6', category: 'Health', type: 'numeric', goal: 2000, unit: 'ml' } },
-    { id: 'productivity', label: 'Productivity', icon: Briefcase, color: '#10b981', habit: { name: 'Deep Work', icon: 'briefcase', color: '#10b981', category: 'Work' } },
+    { id: 'health', label: 'Health & Fitness', icon: Activity, color: '#EF5350', habit: { name: 'Exercise', icon: 'activity', color: '#EF5350', category: 'Fitness' } },
+    { id: 'mind', label: 'Mindfulness', icon: Moon, color: '#7E57C2', habit: { name: 'Meditate', icon: 'moon', color: '#7E57C2', category: 'Mindfulness' } },
+    { id: 'learning', label: 'Learn Something', icon: BookOpen, color: '#FFA726', habit: { name: 'Read', icon: 'book', color: '#FFA726', category: 'Learning' } },
+    { id: 'hydration', label: 'Drink Water', icon: Droplets, color: '#42A5F5', habit: { name: 'Drink Water', icon: 'droplet', color: '#42A5F5', category: 'Health', type: 'numeric', goal: 2000, unit: 'ml' } },
+    { id: 'productivity', label: 'Productivity', icon: Briefcase, color: '#26A69A', habit: { name: 'Deep Work', icon: 'briefcase', color: '#26A69A', category: 'Work' } },
 ];
 
 const OnboardingScreen = ({ onComplete }) => {
@@ -545,11 +545,17 @@ const OnboardingScreen = ({ onComplete }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                {step > 1 && (
+                {step > 1 ? (
                     <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                         <ArrowLeft color="#fff" size={24} />
                     </TouchableOpacity>
+                ) : (
+                    <View style={styles.backButton} /> // Spacer
                 )}
+
+                <TouchableOpacity onPress={onComplete} style={styles.skipButton}>
+                    <Text style={styles.skipText}>Skip</Text>
+                </TouchableOpacity>
             </View>
             <View style={styles.progressBar}>
                 <View style={[styles.progressFill, { width: `${(step / 2) * 100}%` }]} />
@@ -626,7 +632,9 @@ const styles = StyleSheet.create({
     header: {
         paddingHorizontal: 20,
         height: 40,
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
     backButton: {
         width: 40,
@@ -642,7 +650,7 @@ const styles = StyleSheet.create({
     },
     progressFill: {
         height: '100%',
-        backgroundColor: '#2dd4bf',
+        backgroundColor: '#26A69A',
         borderRadius: 2,
     },
     stepContainer: {
@@ -712,7 +720,7 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     button: {
-        backgroundColor: '#2dd4bf',
+        backgroundColor: '#26A69A',
         paddingVertical: 18,
         paddingHorizontal: 32,
         borderRadius: 32,
@@ -876,6 +884,17 @@ const styles = StyleSheet.create({
         color: '#a1a1aa',
         fontSize: 14,
         fontWeight: '500',
+    },
+    skipButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#27272a',
+    },
+    skipText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
 

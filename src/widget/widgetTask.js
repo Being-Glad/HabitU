@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { registerWidgetTaskHandler, requestWidgetUpdate } from 'react-native-android-widget';
+import { registerWidgetTaskHandler, requestWidgetUpdate, FlexWidget, TextWidget } from 'react-native-android-widget';
 import { HabitWidget } from './HabitWidget';
 import { HabitListWidget } from './HabitListWidget';
 import { HabitGridWidget } from './HabitGridWidget';
@@ -147,9 +147,14 @@ export function registerWidgetTask() {
 
                         // Helper to render the widget
                         const renderCurrentWidget = () => {
+                            const commonProps = {
+                                width: widgetInfo?.width,
+                                height: widgetInfo?.height
+                            };
+
                             if (widgetName === 'HabitListWidget') {
                                 props.renderWidget(
-                                    <HabitListWidget habits={habitsWithStreak} />
+                                    <HabitListWidget habits={habitsWithStreak} {...commonProps} />
                                 );
                             } else if (widgetName === 'HabitGridWidget') {
                                 const habit = habitsWithStreak.find(h => h.id === mappedHabitId) || { name: 'Habit Not Found', streak: 0, color: '#52525b', completedDates: {}, icon: 'star' };
@@ -164,6 +169,7 @@ export function registerWidgetTask() {
                                         weekStart={settings.weekStart}
                                         showStreak={settings.showStreakCount}
                                         showLabels={settings.showDayLabels}
+                                        {...commonProps}
                                     />
                                 );
                             } else if (widgetName === 'HabitWeekWidget') {
@@ -179,6 +185,7 @@ export function registerWidgetTask() {
                                         weekStart={settings.weekStart}
                                         showStreak={settings.showStreakCount}
                                         showLabels={settings.showDayLabels}
+                                        {...commonProps}
                                     />
                                 );
                             } else if (widgetName === 'HabitStreakWidget') {
@@ -190,6 +197,7 @@ export function registerWidgetTask() {
                                         color={habit.color}
                                         icon={habit.icon}
                                         habitId={habit.id}
+                                        {...commonProps}
                                     />
                                 );
                             } else {
@@ -206,6 +214,7 @@ export function registerWidgetTask() {
                                         weekStart={settings.weekStart}
                                         showStreak={settings.showStreakCount}
                                         showLabels={settings.showDayLabels}
+                                        {...commonProps}
                                     />
                                 );
                             }
@@ -217,47 +226,65 @@ export function registerWidgetTask() {
                         // If this was a click action, trigger updates for OTHER widgets in the background
                         if (props.widgetAction === 'WIDGET_CLICK') {
                             const allWidgetIds = Object.keys(widgetConfig);
-                            const widgetTypes = [
-                                'HabitWidget',
-                                'HabitGridWidget',
-                                'HabitListWidget',
-                                'HabitWeekWidget',
-                                'HabitStreakWidget'
-                            ];
 
+                            // Sequential updates for background task too
                             for (const targetId of allWidgetIds) {
                                 // Skip the current widget as it was just rendered
                                 if (String(targetId) === String(widgetId)) continue;
 
-                                const targetConfig = widgetConfig[targetId];
-                                let targetWidgetName = null;
+                                const configEntry = widgetConfig[targetId];
+                                let targetHabitId = null;
+                                let targetWidgetName = 'HabitWidget'; // Default
 
-                                if (targetConfig && typeof targetConfig === 'object' && targetConfig.widgetName) {
-                                    targetWidgetName = targetConfig.widgetName;
+                                if (configEntry && typeof configEntry === 'object') {
+                                    targetHabitId = configEntry.habitId;
+                                    targetWidgetName = configEntry.widgetName || 'HabitWidget';
+                                } else {
+                                    targetHabitId = configEntry; // Legacy
                                 }
 
-                                if (targetWidgetName) {
-                                    // If we know the name, update specifically
-                                    try {
-                                        requestWidgetUpdate({
-                                            widgetName: targetWidgetName,
-                                            widgetId: parseInt(targetId, 10),
-                                            widgetAction: 'WIDGET_UPDATE'
-                                        });
-                                    } catch (err) {
-                                        console.error('Failed to request update for widget', targetId, err);
-                                    }
-                                } else {
-                                    // Legacy config or unknown name: Try ALL types to ensure it hits
-                                    for (const type of widgetTypes) {
+                                const targetHabit = habitsWithStreak.find(h => h.id === targetHabitId);
+
+                                if (targetHabit) {
+                                    const commonProps = {
+                                        name: targetHabit.name,
+                                        streak: targetHabit.streak,
+                                        color: targetHabit.color,
+                                        completedDates: targetHabit.completedDates || targetHabit.logs || {},
+                                        icon: targetHabit.icon,
+                                        habitId: targetHabit.id,
+                                        weekStart: settings.weekStart,
+                                        showStreak: settings.showStreakCount,
+                                        showLabels: settings.showDayLabels
+                                    };
+
+                                    let WidgetComponent = HabitWidget;
+                                    if (targetWidgetName === 'HabitListWidget') WidgetComponent = HabitListWidget;
+                                    if (targetWidgetName === 'HabitGridWidget') WidgetComponent = HabitGridWidget;
+                                    if (targetWidgetName === 'HabitWeekWidget') WidgetComponent = HabitWeekWidget;
+                                    if (targetWidgetName === 'HabitStreakWidget') WidgetComponent = HabitStreakWidget;
+
+                                    if (targetWidgetName === 'HabitListWidget') {
                                         try {
                                             requestWidgetUpdate({
-                                                widgetName: type,
+                                                widgetName: 'HabitListWidget',
+                                                renderWidget: () => <HabitListWidget habits={habitsWithStreak} />,
                                                 widgetId: parseInt(targetId, 10),
                                                 widgetAction: 'WIDGET_UPDATE'
                                             });
-                                        } catch (err) {
-                                            // Ignore errors for mismatched types
+                                        } catch (e) {
+                                            console.error('Failed to update list widget', e);
+                                        }
+                                    } else {
+                                        try {
+                                            requestWidgetUpdate({
+                                                widgetName: targetWidgetName,
+                                                renderWidget: () => <WidgetComponent {...commonProps} />,
+                                                widgetId: parseInt(targetId, 10),
+                                                widgetAction: 'WIDGET_UPDATE'
+                                            });
+                                        } catch (e) {
+                                            console.error('Failed to update widget', targetId, e);
                                         }
                                     }
                                 }

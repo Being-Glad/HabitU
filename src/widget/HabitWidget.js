@@ -1,7 +1,21 @@
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
-export function HabitWidget({ name, streak, color, completedDates = {}, icon, habitId, weekStart = 'Monday' }) {
+export function HabitWidget(props) {
+    const {
+        name,
+        streak,
+        color,
+        completedDates = {},
+        icon,
+        habitId,
+        weekStart = 'Monday',
+        showStreak = true,
+        showLabels = true,
+        width,
+        height
+    } = props;
+
     const today = new Date();
     const currentMonth = today.toLocaleString('default', { month: 'long' });
     const currentYear = today.getFullYear();
@@ -11,24 +25,16 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
     // Align to Week Start
-    // JS getDay(): 0=Sun, 1=Mon...
-    // If Monday start: Mon=0, ..., Sun=6
-    // If Sunday start: Sun=0, ..., Sat=6
     let startDayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon
-
     if (weekStart === 'Monday') {
         startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
     }
-    // If Sunday start, startDayOfWeek is already correct (0=Sun)
 
     // Generate calendar grid slots
-    // 1. Empty slots for days before the 1st
     const calendarDays = [];
     for (let i = 0; i < startDayOfWeek; i++) {
         calendarDays.push(null);
     }
-
-    // 2. Actual days of the month
     for (let i = 1; i <= daysInMonth; i++) {
         const d = new Date(today.getFullYear(), today.getMonth(), i);
         const year = d.getFullYear();
@@ -38,13 +44,11 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
         calendarDays.push({ day: i, dateStr });
     }
 
-    // Chunk into weeks (rows of 7)
+    // Chunk into weeks
     const weeks = [];
     for (let i = 0; i < calendarDays.length; i += 7) {
         weeks.push(calendarDays.slice(i, i + 7));
     }
-
-    // ... (iconMap logic)
 
     const iconMap = {
         'sparkles': '✨', 'star': '⭐', 'zap': '⚡', 'wand': '🪄', 'diamond': '💎', 'crown': '👑',
@@ -74,54 +78,75 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
 
     const displayIcon = iconMap[icon] || '⭐';
 
-    const todayYear = today.getFullYear();
-    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
-    const todayDay = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
-
+    const todayMonthStr = String(today.getMonth() + 1).padStart(2, '0');
+    const todayDayStr = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${currentYear}-${todayMonthStr}-${todayDayStr}`;
     const isTodayCompleted = completedDates[todayStr];
 
-    // Use habit color or default Teal
     const activeColor = color || '#2dd4bf';
-    const inactiveColor = '#27272a'; // Zinc-800
-    const emptyColor = 'transparent';
 
     const dayLabels = weekStart === 'Sunday'
         ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
         : ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+    // Layout Logic
+    const isCompact = height && height < 220;
+    const isVerySmall = height && height < 120;
+    const isNarrow = width && width < 200;
+
+    // Measurements
+    const pHoriz = isNarrow ? 8 : 12;
+    const pVert = isCompact ? 8 : 12;
+    const cardRadius = isCompact ? 16 : 20;
+
+    // Font Sizes
+    const fsTitle = isNarrow || isCompact ? 14 : 18;
+    const fsIcon = isNarrow || isCompact ? 14 : 16;
+    const fsMonth = isNarrow || isCompact ? 12 : 16;
+
+    // Toggle Visibility
+    const showDayHeaders = showLabels && !isCompact;
+
+    // Cell Sizing
+    let safeCellSize = 22;
+    if (isCompact) safeCellSize = 16;
+    if (isVerySmall) safeCellSize = 12;
+
+    const iconSize = isCompact ? 20 : 28;
+    const checkSize = isCompact ? 20 : 28;
 
     return (
         <FlexWidget
             style={{
                 height: 'match_parent',
                 width: 'match_parent',
-                backgroundColor: '#09090b', // Zinc-950
-                borderRadius: 20, // Slightly smaller radius
-                paddingHorizontal: 12, // Reduced padding
-                paddingVertical: 12,
+                backgroundColor: '#09090b',
+                borderRadius: cardRadius,
+                paddingHorizontal: pHoriz,
+                paddingVertical: pVert,
                 flexDirection: 'column',
                 justifyContent: 'space-between'
             }}
             clickAction="WIDGET_CLICK"
             clickActionData={{ habitId }}
         >
-            {/* Header: Icon + Name + Checkbox */}
+            {/* Header */}
             <FlexWidget
                 style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginBottom: 6, // Reduced margin
+                    marginBottom: isCompact ? 2 : 6,
                     width: 'match_parent'
                 }}
             >
                 <FlexWidget style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <FlexWidget
                         style={{
-                            width: 28, // Smaller icon
-                            height: 28,
-                            borderRadius: 8,
-                            backgroundColor: '#18181b', // Zinc-900
+                            width: iconSize,
+                            height: iconSize,
+                            borderRadius: 6,
+                            backgroundColor: '#18181b',
                             justifyContent: 'center',
                             alignItems: 'center',
                             marginRight: 8
@@ -129,26 +154,28 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
                     >
                         <TextWidget
                             text={displayIcon}
-                            style={{ fontSize: 16 }}
+                            style={{ fontSize: fsIcon }}
                         />
                     </FlexWidget>
 
                     <TextWidget
                         text={name}
                         style={{
-                            fontSize: 18, // Smaller title
+                            fontSize: fsTitle,
                             fontWeight: 'bold',
                             color: '#ffffff',
-                            fontFamily: 'serif'
+                            fontFamily: 'serif',
+                            maxWidth: isNarrow ? 80 : 150
                         }}
+                        maxLines={1}
                     />
                 </FlexWidget>
 
                 <FlexWidget
                     style={{
-                        width: 28, // Smaller checkbox
-                        height: 28,
-                        borderRadius: 8,
+                        width: checkSize,
+                        height: checkSize,
+                        borderRadius: 6,
                         backgroundColor: isTodayCompleted ? activeColor : '#18181b',
                         justifyContent: 'center',
                         alignItems: 'center'
@@ -158,7 +185,7 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
                         <TextWidget
                             text="✓"
                             style={{
-                                fontSize: 14,
+                                fontSize: isCompact ? 12 : 14,
                                 color: '#000000',
                                 fontWeight: 'bold'
                             }}
@@ -167,24 +194,25 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
                 </FlexWidget>
             </FlexWidget>
 
-            {/* Sub-Header: Month Name + Streak */}
+            {/* Sub-Header */}
             <FlexWidget
                 style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginBottom: 6,
+                    marginBottom: isCompact ? 2 : 6,
                     paddingHorizontal: 2,
-                    width: 'match_parent' // Ensure full width
+                    width: 'match_parent'
                 }}
             >
                 <TextWidget
                     text={currentMonth}
                     style={{
-                        fontSize: 16, // Smaller month name
-                        color: '#e4e4e7', // Zinc-200
+                        fontSize: fsMonth,
+                        color: '#e4e4e7',
                         fontWeight: 'bold',
-                        fontFamily: 'cursive'
+                        fontFamily: 'serif',
+                        fontStyle: 'italic'
                     }}
                 />
 
@@ -194,17 +222,17 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
                         alignItems: 'center',
                         backgroundColor: '#27272a',
                         paddingHorizontal: 6,
-                        paddingVertical: 3,
+                        paddingVertical: isCompact ? 2 : 3,
                         borderRadius: 6
                     }}>
                         <TextWidget
                             text="🔥"
-                            style={{ fontSize: 10, marginRight: 4 }}
+                            style={{ fontSize: isCompact ? 8 : 10, marginRight: 4 }}
                         />
                         <TextWidget
                             text={`${streak}`}
                             style={{
-                                fontSize: 12,
+                                fontSize: isCompact ? 10 : 12,
                                 color: '#ffffff',
                                 fontWeight: 'bold'
                             }}
@@ -222,14 +250,13 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
                     justifyContent: 'flex-start'
                 }}
             >
-                {/* Day Labels */}
-                {showLabels && (
+                {showDayHeaders && (
                     <FlexWidget
                         style={{
                             flexDirection: 'row',
                             justifyContent: 'space-between',
-                            marginBottom: 4,
-                            width: 'match_parent' // Ensure full width
+                            marginBottom: 2,
+                            width: 'match_parent'
                         }}
                     >
                         {dayLabels.map((day, i) => (
@@ -237,33 +264,31 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
                                 key={i}
                                 text={day}
                                 style={{
-                                    fontSize: 10, // Smaller labels
+                                    fontSize: 10,
                                     color: '#a1a1aa', // Zinc-400
                                     fontWeight: 'bold',
                                     textAlign: 'center',
-                                    width: 22 // Reduced width to ensure gaps
+                                    width: safeCellSize
                                 }}
                             />
                         ))}
                     </FlexWidget>
                 )}
 
-                {/* Weeks */}
                 {weeks.map((week, wIndex) => (
                     <FlexWidget
                         key={wIndex}
                         style={{
                             flexDirection: 'row',
                             justifyContent: 'space-between',
-                            marginBottom: 4,
-                            width: 'match_parent' // Ensure full width
+                            marginBottom: isCompact ? 2 : 4,
+                            width: 'match_parent'
                         }}
                     >
-                        {/* Ensure exactly 7 items per row, filling empty if needed */}
                         {Array.from({ length: 7 }).map((_, dIndex) => {
                             const dayObj = week[dIndex];
                             if (!dayObj) {
-                                return <FlexWidget key={dIndex} style={{ width: 22, height: 22 }} />;
+                                return <FlexWidget key={dIndex} style={{ width: safeCellSize, height: safeCellSize }} />;
                             }
 
                             const isCompleted = completedDates[dayObj.dateStr];
@@ -272,22 +297,14 @@ export function HabitWidget({ name, streak, color, completedDates = {}, icon, ha
                                 <FlexWidget
                                     key={dIndex}
                                     style={{
-                                        width: 22, // Smaller cells (22px)
-                                        height: 22,
+                                        width: safeCellSize,
+                                        height: safeCellSize,
                                         backgroundColor: isCompleted ? activeColor : '#1f2937',
-                                        borderRadius: 6, // Slightly smaller radius
+                                        borderRadius: isCompact ? 4 : 6,
                                         justifyContent: 'center',
                                         alignItems: 'center'
                                     }}
-                                >
-                                    {/* Optional: Show day number? Reference doesn't show numbers clearly, just boxes. 
-                                        But usually calendar views have numbers. 
-                                        The reference image shows FILLED boxes. 
-                                        Let's keep it simple: Filled boxes for days. 
-                                        Wait, reference shows ALL days as boxes, some filled (teal), some empty (dark).
-                                        So we render a box for every valid day.
-                                    */}
-                                </FlexWidget>
+                                />
                             );
                         })}
                     </FlexWidget>
